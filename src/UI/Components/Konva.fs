@@ -90,7 +90,7 @@ type Stage =
 type Layer =
     inherit Shape
     static member inline children (children: #ReactElement list) = mkLayerAttr "children" children
-    static member inline create children = layer [Layer.children children]
+    static member inline create keyName children = layer [Layer.key keyName; Layer.children children]
 
 type Text =
     inherit Shape

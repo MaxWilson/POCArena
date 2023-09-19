@@ -435,3 +435,9 @@ module UI =
     let class' (className: string) ctor (elements: ReactElement seq) = ctor [prop.className className; prop.children elements]
     let classP' (className: string) ctor (elements: IReactProperty list) : ReactElement = ctor ((prop.className className)::elements)
     let classTxt' (className: string) ctor (txt: string) = ctor [(prop.className className); prop.text txt]
+    let divWrap (className: string) element =
+        Html.div [
+            prop.className className
+            prop.children [element]
+            ]
+
