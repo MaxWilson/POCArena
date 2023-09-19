@@ -1,7 +1,7 @@
 module Main
 
 open Feliz
-open App
+open UI.Components.Sample
 open Browser.Dom
 open Fable
 open Fable.Core.JsInterop

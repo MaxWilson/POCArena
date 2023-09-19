@@ -1,4 +1,4 @@
-namespace App
+namespace UI.Components.Sample
 
 open Feliz
 open Feliz.Router

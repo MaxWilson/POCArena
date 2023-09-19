@@ -3,13 +3,16 @@
         <TargetFramework>net7.0</TargetFramework>
     </PropertyGroup>
     <ItemGroup>
+        <Compile Include="UI\Components\Sample.fs" />
+        <Compile Include="UI\Components\DragDrop.fs" />
+        <Compile Include="UI\Components\Konva.fs" />
+        <Compile Include="UI\Components\LocalStorage.fs" />
+        <Compile Include="UI\Components\Arena.fs" />
+        <None Include="index.html" />
+        <None Include="sass/main.sass" />
         <Compile Include="Core\Common.fs" />
         <Compile Include="Core\CQRS.fs" />
         <Compile Include="Core\Packrat.fs" />
-        <None Include="index.html" />
-        <None Include="sass/main.sass" />
-        <Compile Include="Extensions.fs" />
-        <Compile Include="Components.fs" />
         <Compile Include="Main.fs" />
     </ItemGroup>
     <ItemGroup>
@@ -17,6 +20,7 @@
         <PackageReference Include="Feliz.Delay" Version="1.0.0" />
         <PackageReference Include="Feliz.Router" Version="4.0.0" />
         <PackageReference Include="Feliz.UseElmish" Version="2.4.0" />
+        <PackageReference Include="Thoth.Json" Version="10.2.0" />
     </ItemGroup>
     <ItemGroup>
       <Folder Include="public\" />
