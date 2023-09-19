@@ -3,6 +3,7 @@ module Main
 open Feliz
 open Feliz.Router
 open UI.Components.Sample
+open UI.Components.Arena
 open Browser.Dom
 open Fable
 open Fable.Core.JsInterop
@@ -18,7 +19,7 @@ let Router() =
             match currentUrl with
             | [ "hello" ] -> Components.HelloWorld()
             | [ "counter" ] -> Components.Counter()
-            | otherwise -> UI.Components.Arena.Arena()
+            | otherwise -> Arena DefaultFrame
         ]
     ]
 

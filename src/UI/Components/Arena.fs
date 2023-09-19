@@ -4,15 +4,22 @@ open Common.UI
 open UI.Konva
 open Feliz
 
-//[<ReactComponent>]
-let Arena () =
-    let spanWrap (name: string) e = Html.span [prop.className name; prop.children [e]]
-    let divWrap (className: string) element =
-            Html.div [
-                prop.className className
-                prop.children [element; Html.button [prop.text "OK"]]
+[<ReactComponent>]
+let DefaultFrame (className: string) stage =
+    Html.div [
+        prop.className className
+        prop.children [
+            stage
+            class' "control" Html.div [
+                Html.button [prop.text "Add an orc"]
+                Html.button [prop.text "Add an Inigo"]
                 ]
-    divWrap "arena" <| stage [
+            ]
+        ]
+
+[<ReactComponent>]
+let Arena (frame: string -> ReactElement -> ReactElement) =
+    frame "arena" <| stage [
         Stage.width 800
         Stage.height 600
         Stage.children [
