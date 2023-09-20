@@ -431,7 +431,8 @@ let inline trace v =
 
 module UI =
     open Feliz
-
+    open Elmish
+    open Feliz.UseElmish
     let class' (className: string) ctor (elements: ReactElement seq) = ctor [prop.className className; prop.children elements]
     let classP' (className: string) ctor (elements: IReactProperty list) : ReactElement = ctor ((prop.className className)::elements)
     let classTxt' (className: string) ctor (txt: string) = ctor [(prop.className className); prop.text txt]
@@ -440,4 +441,6 @@ module UI =
             prop.className className
             prop.children [element]
             ]
-
+    type React with
+        static member useElmishSimple (init: _ -> 'model) (update: 'msg -> 'model -> 'model) =
+            React.useElmish(fun _ -> Program.mkSimple init update (fun _ _ -> ()))

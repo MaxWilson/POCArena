@@ -73,6 +73,7 @@ type Shape =
 type Circle =
     inherit Shape
     static member inline radius (r:float) = mkCircleAttr "radius" r
+
 [<Erase>]
 type LineJoin = Miter | Round | Bevel
 
@@ -92,8 +93,15 @@ type Layer =
     static member inline children (children: #ReactElement list) = mkLayerAttr "children" children
     static member inline create keyName children = layer [Layer.key keyName; Layer.children children]
 
+[<Erase>]
+type VerticalAlign = Top | Middle | Bottom
+
+[<Erase>]
+type HorizontalAlign = Left | Center | Right
+
 type Text =
     inherit Shape
     static member inline text (text: string) = mkTextAttr "text" text
     static member inline fontSize (fontSize: int) = mkTextAttr "fontSize" fontSize
-
+    static member inline align (v: HorizontalAlign) = mkTextAttr "align" v
+    static member inline verticalAlign (v: VerticalAlign) = mkTextAttr "verticalAlign" v

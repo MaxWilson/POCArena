@@ -3,7 +3,7 @@ module Main
 open Feliz
 open Feliz.Router
 open UI.Components.Sample
-open UI.Components.Arena
+open UI.Components.ArenaView
 open Browser.Dom
 open Fable
 open Fable.Core.JsInterop

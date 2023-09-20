@@ -13,6 +13,7 @@
         <Compile Include="UI\Components\Konva.fs" />
         <Compile Include="UI\Components\LocalStorage.fs" />
         <Compile Include="UI\Components\Arena.fs" />
+        <Compile Include="UI\Components\ArenaView.fs" />
         <Compile Include="UI\Components\Components.fs" />
         <Compile Include="Main.fs" />
     </ItemGroup>
