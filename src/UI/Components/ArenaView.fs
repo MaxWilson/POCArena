@@ -14,7 +14,8 @@ open Impl
 
 let winH = Browser.Dom.window.innerHeight |> int
 let winW = Browser.Dom.window.innerWidth |> int
-
+let stageH = min 600 (winH - 100) // TODO: there's gotta be a better way to be responsive to mobile size constraints
+let stageW = min 800 (winW * 3 / 4) // TODO: there's gotta be a better way to be responsive to mobile size constraints
 [<ReactComponent>]
 let DefaultFrame (args: FrameInputs) stage =
     Html.div [
@@ -23,7 +24,7 @@ let DefaultFrame (args: FrameInputs) stage =
             stage
             class' "control" Html.div [
                 let addRandom text _ =
-                    Add(Guid.NewGuid(), (r.Next(0, winW), r.Next(0, winH)), text) |> args.dispatch
+                    Add(Guid.NewGuid(), (r.Next(0, stageW), r.Next(0, stageH)), text) |> args.dispatch
                 let jiggle _ =
                     match args.model.Keys |> List.ofSeq with
                     | [] -> () // nothing to do
@@ -51,8 +52,8 @@ let Arena (frame: FrameInputs -> ReactElement -> ReactElement) =
                 | None -> None
                 | Some creature ->
                     let x, y =
-                        let boundW x = max 0 (min winW x)
-                        let boundH x = max 0 (min winH x)
+                        let boundW x = max 0 (min stageW x)
+                        let boundH x = max 0 (min stageH x)
                         match movement with
                         | Relative(dx, dy) -> creature.x + dx |> boundW, creature.y + dy |> boundH
                         | Absolute(x, y) -> x, y
@@ -66,8 +67,8 @@ let Arena (frame: FrameInputs -> ReactElement -> ReactElement) =
         }
     // "objects" in the game design sense, not the OOP sense
     frame frameArgs <| stage [
-        Stage.width (winW * 3 / 4) // TODO: there's gotta be a better way to be responsive to mobile size constraints
-        Stage.height (winH - 200)
+        Stage.width stageW // TODO: there's gotta be a better way to be responsive to mobile size constraints
+        Stage.height stageH
         Stage.children [
             Layer.create "background" [
                 rect [
