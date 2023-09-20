@@ -3,12 +3,14 @@ module Main
 open Feliz
 open Feliz.Router
 open UI.Components.Sample
+open UI.Components.Arena
 open UI.Components.ArenaView
 open Browser.Dom
 open Fable
 open Fable.Core.JsInterop
 open Common.UI
 importSideEffects "./sass/main.sass"
+
 
 [<ReactComponent>]
 let Router() =
@@ -19,7 +21,14 @@ let Router() =
             match currentUrl with
             | [ "hello" ] -> Components.HelloWorld()
             | [ "counter" ] -> Components.Counter()
-            | otherwise -> Arena DefaultFrame
+            | otherwise ->
+                let state, dispatch = React.useElmishSimple init update
+                let frameArgs = {
+                    className = "arena"
+                    model = state
+                    dispatch = dispatch
+                    }
+                DefaultFrame frameArgs (Arena state)
         ]
     ]
 

@@ -441,6 +441,7 @@ module UI =
             prop.className className
             prop.children [element]
             ]
-    type React with
-        static member useElmishSimple (init: _ -> 'model) (update: 'msg -> 'model -> 'model) =
+
+    type React =
+        static member inline useElmishSimple (init: _ -> 'model) (update: 'msg -> 'model -> 'model) =
             React.useElmish(fun _ -> Program.mkSimple init update (fun _ _ -> ()))

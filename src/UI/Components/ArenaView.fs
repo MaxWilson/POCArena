@@ -12,10 +12,6 @@ module private Impl =
     let r = System.Random()
 open Impl
 
-let winH = Browser.Dom.window.innerHeight |> int
-let winW = Browser.Dom.window.innerWidth |> int
-let stageH = min 600 (winH - 100) // TODO: there's gotta be a better way to be responsive to mobile size constraints
-let stageW = min 800 (winW * 3 / 4) // TODO: there's gotta be a better way to be responsive to mobile size constraints
 [<ReactComponent>]
 let DefaultFrame (args: FrameInputs) stage =
     Html.div [
@@ -26,7 +22,7 @@ let DefaultFrame (args: FrameInputs) stage =
                 let addRandom text _ =
                     Add(Guid.NewGuid(), (r.Next(0, stageW), r.Next(0, stageH)), text) |> args.dispatch
                 let jiggle _ =
-                    match args.model.Keys |> List.ofSeq with
+                    match args.model.creatures.Keys |> List.ofSeq with
                     | [] -> () // nothing to do
                     | ids ->
                         let id = chooseRandom ids
@@ -39,34 +35,10 @@ let DefaultFrame (args: FrameInputs) stage =
             ]
         ]
 
-
 [<ReactComponent>]
-let Arena (frame: FrameInputs -> ReactElement -> ReactElement) =
-    let init _ =  Map.empty
-    let update msg model =
-        match msg with
-        | Clear -> Map.empty
-        | Add(id, coords, title) -> model |> Map.add id { id = id; x = fst coords; y = snd coords; text = Some title }
-        | Move(id, movement) ->
-            let changeCoords = function
-                | None -> None
-                | Some creature ->
-                    let x, y =
-                        let boundW x = max 0 (min stageW x)
-                        let boundH x = max 0 (min stageH x)
-                        match movement with
-                        | Relative(dx, dy) -> creature.x + dx |> boundW, creature.y + dy |> boundH
-                        | Absolute(x, y) -> x, y
-                    Some { creature with x = x; y = y }
-            model |> Map.change id changeCoords
-    let (state: Map<_, _>), dispatch = React.useElmishSimple init update
-    let frameArgs = {
-        className = "arena"
-        model = state
-        dispatch = dispatch
-        }
-    // "objects" in the game design sense, not the OOP sense
-    frame frameArgs <| stage [
+let Arena (model: Model) =
+    let state = model.creatures
+    stage [
         Stage.width stageW // TODO: there's gotta be a better way to be responsive to mobile size constraints
         Stage.height stageH
         Stage.children [
