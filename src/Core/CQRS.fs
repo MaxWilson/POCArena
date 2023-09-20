@@ -36,4 +36,12 @@ type CQRS<'msg, 'state>(initialState: 'state, execute) =
     member this.LogWithMessages() : List<'msg option * 'state> = stateHistoryRev |> List.rev |> List.map snd
     static member Create(st, f) : CQRS<_,_> = CQRS(st, f)
 
+let cqrsDiff update (currentState: 'model, knownHistory: 'msg list) (history': 'msg list): 'model * 'msg list =
+    let recentHistoryRev = history' |> List.take (history'.Length - knownHistory.Length) |> List.rev
+    let rec loop model accum = function
+        | [] -> model, (List.rev accum)
+        | msg::rest ->
+            let model' = update msg model
+            loop model' (msg::accum) rest
+    loop currentState [] recentHistoryRev
 
