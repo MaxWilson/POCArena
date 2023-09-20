@@ -39,11 +39,11 @@ module private Interop =
     let inline mkRectAttr (key: string) (value: obj) : IRectProperty = unbox (key, value)
     let inline mkTextAttr (key: string) (value: obj) : ITextProperty = unbox (key, value)
 
-let stage (props: IStageProperty list) = Interop.reactApi.createElement(import "Stage" "react-konva", createObj !!props)
-let layer (props: ILayerProperty list) = Interop.reactApi.createElement(import "Layer" "react-konva", createObj !!props)
-let circle (props: ICircleProperty list) = Interop.reactApi.createElement(import "Circle" "react-konva", createObj !!props)
-let rect (props: IRectProperty list) = Interop.reactApi.createElement(import "Rect" "react-konva", createObj !!props)
-let text (props: ITextProperty list) = Interop.reactApi.createElement(import "Text" "react-konva", createObj !!props)
+let inline stage (props: IStageProperty list) = Interop.reactApi.createElement(import "Stage" "react-konva", createObj !!props)
+let inline layer (props: ILayerProperty list) = Interop.reactApi.createElement(import "Layer" "react-konva", createObj !!props)
+let inline circle (props: ICircleProperty list) = Interop.reactApi.createElement(import "Circle" "react-konva", createObj !!props)
+let inline rect (props: IRectProperty list) = Interop.reactApi.createElement(import "Rect" "react-konva", createObj !!props)
+let inline text (props: ITextProperty list) = Interop.reactApi.createElement(import "Text" "react-konva", createObj !!props)
 
 [<Erase>]
 type Color = Red | Green | Blue | Yellow | Grey | Orange | LightGrey | DarkGrey | Black
@@ -61,7 +61,7 @@ type Shape =
     static member inline opacity (v:float) = mkShapeAttr "opacity" v
     static member inline fill (color:Color) = mkShapeAttr "fill" color
     static member inline fill (color:string) = mkShapeAttr "fill" color
-    static member draggable = mkShapeAttr "draggable" true
+    static member inline draggable = mkShapeAttr "draggable" true
     static member inline onDragStart (f: ({| target: 'a |} -> 'b)) = mkShapeAttr "onDragStart" f
     static member inline onDragEnd (f: ({| target: 'a |} -> 'b)) = mkShapeAttr "onDragEnd" f
     static member inline onClick (f: ({| target: 'a |} -> 'b)) = mkShapeAttr "onClick" f
