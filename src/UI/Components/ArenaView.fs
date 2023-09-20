@@ -30,6 +30,7 @@ let DefaultFrame (args: FrameInputs) stage =
                 Html.button [prop.text "Add an orc"; prop.onClick (addRandom "Orc") ]
                 Html.button [prop.text "Add an Inigo"; prop.onClick (addRandom "Inigo") ]
                 Html.button [prop.text "Random movement"; prop.onClick jiggle ]
+                Html.button [prop.text "Clear"; prop.onClick (fun _ -> args.dispatch Clear) ]
                 ]
             ]
         ]
@@ -40,6 +41,7 @@ let Arena (frame: FrameInputs -> ReactElement -> ReactElement) =
     let init _ =  Map.empty
     let update msg model =
         match msg with
+        | Clear -> Map.empty
         | Add(id, coords, title) -> model |> Map.add id { id = id; x = fst coords; y = snd coords; text = Some title }
         | Move(id, movement) ->
             let changeCoords = function
@@ -95,29 +97,6 @@ let Arena (frame: FrameInputs -> ReactElement -> ReactElement) =
                         | None -> ()
                         Text.key ("txt" + toString creature.id)
                         ]
-                circle [
-                    Shape.x 100
-                    Shape.y 100
-                    Shape.width 50
-                    Shape.height 50
-                    Shape.fill Color.Red
-                    Shape.key "circle1"
-                    ]
-                rect [
-                    Shape.x 200
-                    Shape.y 200
-                    Shape.width 50
-                    Shape.height 50
-                    Shape.fill Color.Green
-                    Shape.key "rect1"
-                    ]
-                text [
-                    Shape.x 300
-                    Shape.y 300
-                    Text.text "Hello World"
-                    Shape.fill Color.Blue
-                    Shape.key "text1"
-                    ]
                 ]
             ]
         ]

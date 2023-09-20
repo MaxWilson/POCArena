@@ -6,6 +6,7 @@ type Movement = Relative of int * int | Absolute of int * int
 type Msg =
     | Add of UniqueId * coords: (int * int) * title: string
     | Move of UniqueId * Movement
+    | Clear
 type VisualObject = {
     id: UniqueId
     text: string option
