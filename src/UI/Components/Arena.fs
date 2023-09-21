@@ -30,7 +30,7 @@ let stageW = min 800 (winW * 3 / 4) // TODO: there's gotta be a better way to be
 let init _ =  { creatures = Map.empty; history = [] }
 let updateViaMovement creature =
     let boundW x = max 0 (min stageW x)
-    let boundH x = max 0 (min stageH x)
+    let boundH y = max 0 (min stageH y)
     function
     | Relative(dx, dy) -> creature.x + dx |> boundW, creature.y + dy |> boundH
     | Absolute(x, y) -> x, y

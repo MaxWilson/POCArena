@@ -20,7 +20,7 @@ module private Impl =
                 let x,y = this.unto
                 "x" ==> x
                 "y" ==> y
-                "duration" ==> (float length) * 0.01
+                "duration" ==> ((float length) * 0.005 |> min 0.3)
                 "onFinish" ==> (fun () -> this.afterwards())
                 ])
     type Todo =
@@ -96,11 +96,11 @@ let Arena (init, history': Msg list) =
                 todo.start text
                 executionQueue.current <- tail
             | v -> shouldntHappen v
-    let proj model = function
-        | Clear | Add _ -> Some(Immediate(fun () -> setCanon model))
+    let proj model model' = function
+        | Clear | Add _ -> Some(Immediate(fun () -> setCanon model')) // we want to set ourselves in the state we'd be AFTER this message
         | Move(id, move) as msg ->
-            let c = model.creatures[id]
-            { id = id; from = (c.x, c.y); unto = updateViaMovement c move; afterwards = fun  () -> setCanon model; pump() }
+            let c = model.creatures[id] // we want to start at where the creature was BEFORE this message and then move to where it should be AFTER
+            { id = id; from = (c.x, c.y); unto = updateViaMovement c move; afterwards = fun  () -> setCanon model'; pump() }
                 |> Tween |> Some
     let _, todo = CQRS.cqrsDiff update proj (canon, knownHistory) history'
         // we don't need the model output, that will come as commands flow through the execution queue
