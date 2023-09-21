@@ -17,9 +17,10 @@ module private Impl =
             let square x = x * x
             let length = sqrt (square (fst this.from - fst this.unto) + square (snd this.from - snd this.unto) |> float)
             node.to' (createObj [
-                "x" ==> fst this.unto
-                "y" ==> snd this.unto
-                "duration" ==> 1.0 // (float length) * 0.05
+                let x,y = this.unto
+                "x" ==> x
+                "y" ==> y
+                "duration" ==> (float length) * 0.01
                 "onFinish" ==> (fun () -> this.afterwards())
                 ])
     type Todo =
@@ -41,10 +42,24 @@ let DefaultFrame (args: FrameInputs) stage =
                     | [] -> () // nothing to do
                     | ids ->
                         let id = chooseRandom ids
-                        Move(id, Relative(r.Next(-50, 50), r.Next(-50, 50))) |> args.dispatch
+                        Move(id, Relative(r.Next(-250, 250), r.Next(-250, 250))) |> args.dispatch
+                let moveDown _ =
+                    match args.model.creatures.Keys |> List.ofSeq with
+                    | [] -> () // nothing to do
+                    | ids ->
+                        for id in ids do
+                            Move(id, Relative(20, 50)) |> args.dispatch
+                let moveToTop _ =
+                    match args.model.creatures.Keys |> List.ofSeq with
+                    | [] -> () // nothing to do
+                    | ids ->
+                        for ix, id in ids |> List.mapi Tuple2.create do
+                            Move(id, Absolute(100 + ix * 100, 50)) |> args.dispatch
                 Html.button [prop.text "Add an orc"; prop.onClick (addRandom "Orc") ]
                 Html.button [prop.text "Add an Inigo"; prop.onClick (addRandom "Inigo") ]
                 Html.button [prop.text "Random movement"; prop.onClick jiggle ]
+                Html.button [prop.text "Move down"; prop.onClick moveDown ]
+                Html.button [prop.text "Move To Top"; prop.onClick moveToTop ]
                 Html.button [prop.text "Clear"; prop.onClick (fun _ -> args.dispatch Clear) ]
                 ]
             ]
@@ -116,9 +131,9 @@ let Arena (init, history': Msg list) =
                 for creature in canon.creatures.Values do
                     circle [
                         match executionQueue.current with
-                        | (Tween head)::tail when head.id = creature.id ->
-                            Circle.x (head.from |> fst |> float)
-                            Circle.y (head.from |> snd |> float)
+                        | (Tween { id = id; from = (x,y) } as head)::tail when id = creature.id ->
+                            Circle.x x
+                            Circle.y y
                             Circle.ref (fun (n:KonvaNode) -> movingCircle.current <- Some n)
                         | _ ->
                             Circle.x (creature.x |> float)
@@ -129,9 +144,9 @@ let Arena (init, history': Msg list) =
                         ]
                     text [
                         match executionQueue.current with
-                        | (Tween head)::tail when head.id = creature.id ->
-                            Text.x (head.from |> fst |> float)
-                            Text.y (head.from |> snd |> float)
+                        | (Tween { id = id; from = (x,y) } as head)::tail when id = creature.id ->
+                            Text.x x
+                            Text.y y
                             Text.ref (fun (n:KonvaNode) -> movingText.current <- Some n)
                         | _ ->
                             Text.x (creature.x |> float)
