@@ -7,12 +7,21 @@ open Feliz
 open Feliz.UseElmish
 open Elmish
 open UI.Components.Arena
-
 module private Impl =
+    open Fable.Core.JsInterop
     let r = System.Random()
 
     type Movespec = { id: UniqueId; from: int * int; unto: int * int; afterwards: unit -> unit }
-
+        with
+        member this.start(node: KonvaNode) =
+            let square x = x * x
+            let length = sqrt (square (fst this.from - fst this.unto) + square (snd this.from - snd this.unto) |> float)
+            node.to' (createObj [
+                "x" ==> fst this.unto
+                "y" ==> snd this.unto
+                "duration" ==> (float length) * 0.05
+                "finish" ==> (fun () -> this.afterwards())
+                ])
 open Impl
 
 [<ReactComponent>]
@@ -43,26 +52,21 @@ let DefaultFrame (args: FrameInputs) stage =
 let Arena (initialModel, history': Msg list) =
     // start with initialModel, then movements flow in through history' to executionQueue and eventually to canon
     let canon, setCanon = React.useState initialModel
-    let _, todo = CQRS.cqrsDiff update (fun model -> function | Clear | Add _ -> None | Move(id, move) as msg -> Some (let c = model.creatures[id] in { id = id; from = (c.x, c.y); unto = updateViaMovement c move; afterwards = fun () -> setCanon model })) (canon, []) history'
-        // we don't want the model output from cqrsDiff because it's going to flow through executionQueue via afterwards()
-    let executionQueue, setExecutionQueue = React.useState []
-    match todo with
-    | [] -> () // nothing to do
-    | _ ->
-        let executionQueue = executionQueue @ todo
-        setExecutionQueue executionQueue
     let movingCircle = React.useRef None
     let movingText = React.useRef None
-    React.useLayoutEffect (fun () ->
-        match movingCircle.current, movingText.current with
-        | Some circle, Some text ->
-            circle
-            let anim = Animation.create "x" (fun t -> t * 100.0) 0.0 1.0 EaseInOut
-            anim.onFinish <- fun () -> setExecutionQueue (executionQueue |> List.tail)
-            circle.start anim
-            text.start anim
-        | _ -> ()
-        )
+    let executionQueue, setExecutionQueue = React.useState []
+    let _, todo = CQRS.cqrsDiff update (fun model -> function | Clear | Add _ -> None | Move(id, move) as msg -> Some (let c = model.creatures[id] in { id = id; from = (c.x, c.y); unto = updateViaMovement c move; afterwards = fun () -> setCanon model; pump() })) (canon, []) history'
+        // we don't want the model output from cqrsDiff because it's going to flow through executionQueue via afterwards()
+    let pump() =
+        React.useLayoutEffect
+    let executionQueue =
+        match todo with
+        | [] -> executionQueue
+        | _ ->
+            let executionQueue' = executionQueue @ todo
+            setExecutionQueue executionQueue'
+            executionQueue'
+
     stage [
         Stage.width stageW // TODO: there's gotta be a better way to be responsive to mobile size constraints
         Stage.height stageH

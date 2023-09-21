@@ -107,4 +107,5 @@ type Text =
     static member inline verticalAlign (v: VerticalAlign) = mkTextAttr "verticalAlign" v
 
 type KonvaNode =
-    member inline to': obj -> unit
+    [<Emit "${0}.to({1})">]
+    member inline this.to' (args:obj) : unit = jsNative
