@@ -13,7 +13,7 @@ module private Impl =
 
     type Movespec = { id: UniqueId; from: int * int; unto: int * int; afterwards: unit -> unit }
         with
-        member this.start(node: KonvaNode) =
+        member this.start(node: KonvaNode) fin =
             let square x = x * x
             let length = sqrt (square (fst this.from - fst this.unto) + square (snd this.from - snd this.unto) |> float)
             node.to' (createObj [
@@ -21,7 +21,7 @@ module private Impl =
                 "x" ==> x
                 "y" ==> y
                 "duration" ==> ((float length) * 0.005 |> min 0.3)
-                "onFinish" ==> (fun () -> this.afterwards())
+                "onFinish" ==> (fun () -> fin(); this.afterwards())
                 ])
     type Todo =
         | Tween of Movespec
@@ -92,9 +92,9 @@ let Arena (init, history': Msg list) =
         | (Tween todo)::tail ->
             match movingCircle.current, movingText.current with
             | Some circle, Some text ->
-                todo.start circle
-                todo.start text
-                executionQueue.current <- tail
+                todo.start circle (fun () -> executionQueue.current <- tail)
+                //todo.start text
+
             | v -> shouldntHappen v
     let proj model model' = function
         | Clear | Add _ -> Some(Immediate(fun () -> setCanon model')) // we want to set ourselves in the state we'd be AFTER this message
@@ -105,6 +105,11 @@ let Arena (init, history': Msg list) =
     let _, todo = CQRS.cqrsDiff update proj (canon, knownHistory) history'
         // we don't need the model output, that will come as commands flow through the execution queue
     //if todo.Length > 0 then printfn $"{knownHistory} ==> {history'} yields TODO queue: {todo}"
+    if todo.Length > 0 then
+        let x = todo |> List.map (fun x -> (toString x).Substring(0,6))
+        let e = executionQueue.current |> List.map (fun x -> (toString x).Substring(0,6))
+        printfn $"Queueing: {x}"
+        printfn $"onto {e}"
     match todo with
     | [] -> ()
     | h::t ->
