@@ -19,9 +19,12 @@ module private Impl =
             node.to' (createObj [
                 "x" ==> fst this.unto
                 "y" ==> snd this.unto
-                "duration" ==> (float length) * 0.05
-                "finish" ==> (fun () -> this.afterwards())
+                "duration" ==> 1.0 // (float length) * 0.05
+                "onFinish" ==> (fun () -> this.afterwards())
                 ])
+    type Todo =
+        | Tween of Movespec
+        | Immediate of (unit -> unit)
 open Impl
 
 [<ReactComponent>]
@@ -49,36 +52,52 @@ let DefaultFrame (args: FrameInputs) stage =
 
 
 [<ReactComponent>]
-let Arena (initialModel, history': Msg list) =
+let Arena (init, history': Msg list) =
     // start with initialModel, then movements flow in through history' to executionQueue and eventually to canon
-    let canon, setCanon = React.useState initialModel
+    let canon, setCanon = React.useState init
+    let knownHistory, setKnownHistory = React.useState []
+    let executionQueue = React.useRef ([]: Todo list) // we need all the closures to share the same mutable queue
     let movingCircle = React.useRef None
     let movingText = React.useRef None
-    let executionQueue, setExecutionQueue = React.useState []
-    let _, todo = CQRS.cqrsDiff update (fun model -> function | Clear | Add _ -> None | Move(id, move) as msg -> Some (let c = model.creatures[id] in { id = id; from = (c.x, c.y); unto = updateViaMovement c move; afterwards = fun tailQueue () -> setCanon model; pump tailQueue })) (canon, []) history'
-        // we don't want the model output from cqrsDiff because it's going to flow through executionQueue via afterwards()
-    let pump queue =
-        React.useLayoutEffect (fun () ->
-            match queue with
-            | [] -> ()
-            | todo::tail ->
-                let node = movingCircle.current.Value
-                let node' = movingText.current.Value
-                head.start node
-                head.start node'
-                setExecutionQueue tail
-            )
-    let executionQueue =
-        match todo with
-        | [] -> executionQueue
-        | h::t ->
-            // start the pump whenever execution queue goes from empty to non-empty
-            if executionQueue.IsEmpty then
-                pump todo
-            let executionQueue' = executionQueue @ todo
-            setExecutionQueue executionQueue'
-            executionQueue'
-
+    // because React hooks including useLayoutEffect must happen a fixed number of times, we have to split Tween/Immediate execution between a layout effect and regular code
+    // TODO: refactor this logic to be clearer
+    let rec pump () =
+        match executionQueue.current with
+        | [] -> () // nothing to do
+        | Immediate(todo)::tail ->
+            todo()
+            executionQueue.current <- tail
+            pump()
+        | (Tween todo)::tail -> ()
+            // pump() will happen from inside the Tween that's started in useLayoutEffect
+    React.useLayoutEffect <| fun () ->
+        match executionQueue.current with
+        | [] -> () // nothing to do
+        | Immediate(todo)::tail -> ()
+        | (Tween todo)::tail ->
+            match movingCircle.current, movingText.current with
+            | Some circle, Some text ->
+                todo.start circle
+                todo.start text
+                executionQueue.current <- tail
+            | v -> shouldntHappen v
+    let proj model = function
+        | Clear | Add _ -> Some(Immediate(fun () -> setCanon model))
+        | Move(id, move) as msg ->
+            let c = model.creatures[id]
+            { id = id; from = (c.x, c.y); unto = updateViaMovement c move; afterwards = fun  () -> setCanon model; pump() }
+                |> Tween |> Some
+    let _, todo = CQRS.cqrsDiff update proj (canon, knownHistory) history'
+        // we don't need the model output, that will come as commands flow through the execution queue
+    //if todo.Length > 0 then printfn $"{knownHistory} ==> {history'} yields TODO queue: {todo}"
+    match todo with
+    | [] -> ()
+    | h::t ->
+        setKnownHistory history'
+        // start the pump whenever execution queue goes from empty to non-empty
+        let startPump = executionQueue.current.IsEmpty
+        executionQueue.current <- executionQueue.current @ todo
+        if startPump then pump()
     stage [
         Stage.width stageW // TODO: there's gotta be a better way to be responsive to mobile size constraints
         Stage.height stageH
@@ -96,11 +115,11 @@ let Arena (initialModel, history': Msg list) =
             Layer.create "arena" [
                 for creature in canon.creatures.Values do
                     circle [
-                        match executionQueue with
-                        | head::tail when head.id = creature.id ->
+                        match executionQueue.current with
+                        | (Tween head)::tail when head.id = creature.id ->
                             Circle.x (head.from |> fst |> float)
                             Circle.y (head.from |> snd |> float)
-                            ("ref", (fun (n:KonvaNode) -> movingCircle.current <- Some n)) |> unbox
+                            Circle.ref (fun (n:KonvaNode) -> movingCircle.current <- Some n)
                         | _ ->
                             Circle.x (creature.x |> float)
                             Circle.y (creature.y |> float)
@@ -109,11 +128,11 @@ let Arena (initialModel, history': Msg list) =
                         Circle.key ("circle" + toString creature.id)
                         ]
                     text [
-                        match executionQueue with
-                        | head::tail when head.id = creature.id ->
-                            Circle.x (head.from |> fst |> float)
-                            Circle.y (head.from |> snd |> float)
-                            ("ref", (fun (n:KonvaNode) -> movingText.current <- Some n)) |> unbox
+                        match executionQueue.current with
+                        | (Tween head)::tail when head.id = creature.id ->
+                            Text.x (head.from |> fst |> float)
+                            Text.y (head.from |> snd |> float)
+                            Text.ref (fun (n:KonvaNode) -> movingText.current <- Some n)
                         | _ ->
                             Text.x (creature.x |> float)
                             Text.y (creature.y |> float)
