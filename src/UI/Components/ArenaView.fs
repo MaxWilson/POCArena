@@ -55,14 +55,26 @@ let Arena (initialModel, history': Msg list) =
     let movingCircle = React.useRef None
     let movingText = React.useRef None
     let executionQueue, setExecutionQueue = React.useState []
-    let _, todo = CQRS.cqrsDiff update (fun model -> function | Clear | Add _ -> None | Move(id, move) as msg -> Some (let c = model.creatures[id] in { id = id; from = (c.x, c.y); unto = updateViaMovement c move; afterwards = fun () -> setCanon model; pump() })) (canon, []) history'
+    let _, todo = CQRS.cqrsDiff update (fun model -> function | Clear | Add _ -> None | Move(id, move) as msg -> Some (let c = model.creatures[id] in { id = id; from = (c.x, c.y); unto = updateViaMovement c move; afterwards = fun tailQueue () -> setCanon model; pump tailQueue })) (canon, []) history'
         // we don't want the model output from cqrsDiff because it's going to flow through executionQueue via afterwards()
-    let pump() =
-        React.useLayoutEffect
+    let pump queue =
+        React.useLayoutEffect (fun () ->
+            match queue with
+            | [] -> ()
+            | todo::tail ->
+                let node = movingCircle.current.Value
+                let node' = movingText.current.Value
+                head.start node
+                head.start node'
+                setExecutionQueue tail
+            )
     let executionQueue =
         match todo with
         | [] -> executionQueue
-        | _ ->
+        | h::t ->
+            // start the pump whenever execution queue goes from empty to non-empty
+            if executionQueue.IsEmpty then
+                pump todo
             let executionQueue' = executionQueue @ todo
             setExecutionQueue executionQueue'
             executionQueue'
