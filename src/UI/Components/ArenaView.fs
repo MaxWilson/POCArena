@@ -141,6 +141,8 @@ let Arena (init, history': Msg list) =
                         Circle.radius 25
                         Circle.fill Color.Red
                         Circle.key ("circle" + toString creature.id)
+                        Circle.offsetX -25
+                        Circle.offsetY -25
                         ]
                     text [
                         match executionQueue.current with
