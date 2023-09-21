@@ -10,6 +10,9 @@ open UI.Components.Arena
 
 module private Impl =
     let r = System.Random()
+
+    type Movespec = { from: int * int; unto: int * int }
+
 open Impl
 
 [<ReactComponent>]
@@ -35,9 +38,21 @@ let DefaultFrame (args: FrameInputs) stage =
             ]
         ]
 
+
 [<ReactComponent>]
-let Arena (model: Model) =
-    let state = model.creatures
+let Arena (initialModel, history': Msg list) =
+    // start with initialModel, then movements flow in through history' to executionQueue and eventually to canon
+    let canon, setCanon = React.useState initialModel
+    let _, todo = CQRS.cqrsDiff update (fun model msg -> Some msg) (canon, []) history' // we don't want the model output because it's going to flow through executionQueue
+
+    let executionQueue, setExecutionQueue = React.useState []
+    let recentHistoryEarliestFirst = history' |> List.take (history'.Length - (canon.history.Length + executionQueue.Length)) |> List.rev
+    let executionQueue = executionQueue @ recentHistoryEarliestFirst
+    // let queue msgs =
+    //     let msgs = msgs |> List.map (function Move(id, movement) -> updateViaMovement )
+    //     let queue' = animationQueue |> Map.add msgs (DateTime.Now + TimeSpan.FromSeconds(1.0))
+    //     setAnimationQueue queue'
+    let model = canon.creatures
     stage [
         Stage.width stageW // TODO: there's gotta be a better way to be responsive to mobile size constraints
         Stage.height stageH
@@ -53,7 +68,7 @@ let Arena (model: Model) =
                     ]
                 ]
             Layer.create "arena" [
-                for creature in state.Values do
+                for creature in model.Values do
                     let x,y = creature.x, creature.y
                     circle [
                         Circle.x x

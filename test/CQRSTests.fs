@@ -14,5 +14,5 @@ let tests =
                 | f, expected ->
                     test <@ f model = expected @>
                     f model
-            test <@ cqrsDiff update (initial + 1, log[0..0]) (log |> List.rev) |> Tuple2.mapsnd (List.map snd) = (18, [16; 13; 3; 18]) @>
+            test <@ cqrsDiff update (fun _ (_, expected) -> Some expected) (initial + 1, log[0..0]) (log |> List.rev) = (18, [16; 13; 3; 18]) @>
     ]

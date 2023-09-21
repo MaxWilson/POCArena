@@ -28,7 +28,7 @@ let Router() =
                     model = state
                     dispatch = dispatch
                     }
-                DefaultFrame frameArgs (Arena state)
+                DefaultFrame frameArgs (Arena (notImpl()))
         ]
     ]
 

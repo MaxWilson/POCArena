@@ -1,1 +1,0 @@
-dotnet watch run -f net7.0
