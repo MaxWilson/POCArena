@@ -70,6 +70,7 @@ let DefaultFrame (args: FrameInputs) stage =
 let Arena (init, history': Msg list) =
     // start with initialModel, then movements flow in through history' to executionQueue and eventually to canon
     let canon, setCanon = React.useState init
+    let futureCanon, setFutureCanon = React.useState init
     let knownHistory, setKnownHistory = React.useState []
     let executionQueue = React.useRef ([]: Todo list) // we need all the closures to share the same mutable queue
     let movingCircle = React.useRef None
@@ -102,7 +103,7 @@ let Arena (init, history': Msg list) =
             let c = model.creatures[id] // we want to start at where the creature was BEFORE this message and then move to where it should be AFTER
             { id = id; from = (c.x, c.y); unto = updateViaMovement c move; afterwards = fun  () -> setCanon model'; pump() }
                 |> Tween |> Some
-    let _, todo = CQRS.cqrsDiff update proj (canon, knownHistory) history'
+    let futureCanon', todo = CQRS.cqrsDiff update proj (futureCanon, knownHistory) history' // DON'T start the diff from canon, start it from the model we'll have after doing all the messages
         // we don't need the model output, that will come as commands flow through the execution queue
     //if todo.Length > 0 then printfn $"{knownHistory} ==> {history'} yields TODO queue: {todo}"
     if todo.Length > 0 then
@@ -114,6 +115,7 @@ let Arena (init, history': Msg list) =
     | [] -> ()
     | h::t ->
         setKnownHistory history'
+        setFutureCanon futureCanon'
         // start the pump whenever execution queue goes from empty to non-empty
         let startPump = executionQueue.current.IsEmpty
         executionQueue.current <- executionQueue.current @ todo
