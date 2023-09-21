@@ -45,5 +45,3 @@ let cqrsDiff update project (currentState: 'model, knownHistory: 'msg list) (his
             let accum = match (project model' msg) with Some v -> v::accum  | None -> accum
             loop model' accum rest
     loop currentState [] recentHistoryRev
-
-2+2

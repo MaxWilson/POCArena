@@ -11,7 +11,7 @@ open UI.Components.Arena
 module private Impl =
     let r = System.Random()
 
-    type Movespec = { from: int * int; unto: int * int }
+    type Movespec = { id: UniqueId; from: int * int; unto: int * int; afterwards: unit -> unit }
 
 open Impl
 
@@ -43,16 +43,26 @@ let DefaultFrame (args: FrameInputs) stage =
 let Arena (initialModel, history': Msg list) =
     // start with initialModel, then movements flow in through history' to executionQueue and eventually to canon
     let canon, setCanon = React.useState initialModel
-    let _, todo = CQRS.cqrsDiff update (fun model msg -> Some msg) (canon, []) history' // we don't want the model output because it's going to flow through executionQueue
-
+    let _, todo = CQRS.cqrsDiff update (fun model -> function | Clear | Add _ -> None | Move(id, move) as msg -> Some (let c = model.creatures[id] in { id = id; from = (c.x, c.y); unto = updateViaMovement c move; afterwards = fun () -> setCanon model })) (canon, []) history'
+        // we don't want the model output from cqrsDiff because it's going to flow through executionQueue via afterwards()
     let executionQueue, setExecutionQueue = React.useState []
-    let recentHistoryEarliestFirst = history' |> List.take (history'.Length - (canon.history.Length + executionQueue.Length)) |> List.rev
-    let executionQueue = executionQueue @ recentHistoryEarliestFirst
-    // let queue msgs =
-    //     let msgs = msgs |> List.map (function Move(id, movement) -> updateViaMovement )
-    //     let queue' = animationQueue |> Map.add msgs (DateTime.Now + TimeSpan.FromSeconds(1.0))
-    //     setAnimationQueue queue'
-    let model = canon.creatures
+    match todo with
+    | [] -> () // nothing to do
+    | _ ->
+        let executionQueue = executionQueue @ todo
+        setExecutionQueue executionQueue
+    let movingCircle = React.useRef None
+    let movingText = React.useRef None
+    React.useLayoutEffect (fun () ->
+        match movingCircle.current, movingText.current with
+        | Some circle, Some text ->
+            circle
+            let anim = Animation.create "x" (fun t -> t * 100.0) 0.0 1.0 EaseInOut
+            anim.onFinish <- fun () -> setExecutionQueue (executionQueue |> List.tail)
+            circle.start anim
+            text.start anim
+        | _ -> ()
+        )
     stage [
         Stage.width stageW // TODO: there's gotta be a better way to be responsive to mobile size constraints
         Stage.height stageH
@@ -68,18 +78,29 @@ let Arena (initialModel, history': Msg list) =
                     ]
                 ]
             Layer.create "arena" [
-                for creature in model.Values do
-                    let x,y = creature.x, creature.y
+                for creature in canon.creatures.Values do
                     circle [
-                        Circle.x x
-                        Circle.y y
+                        match executionQueue with
+                        | head::tail when head.id = creature.id ->
+                            Circle.x (head.from |> fst |> float)
+                            Circle.y (head.from |> snd |> float)
+                            ("ref", (fun (n:KonvaNode) -> movingCircle.current <- Some n)) |> unbox
+                        | _ ->
+                            Circle.x (creature.x |> float)
+                            Circle.y (creature.y |> float)
                         Circle.radius 25
                         Circle.fill Color.Red
                         Circle.key ("circle" + toString creature.id)
                         ]
                     text [
-                        Text.x (x - 25)
-                        Text.y (y - 25)
+                        match executionQueue with
+                        | head::tail when head.id = creature.id ->
+                            Circle.x (head.from |> fst |> float)
+                            Circle.y (head.from |> snd |> float)
+                            ("ref", (fun (n:KonvaNode) -> movingText.current <- Some n)) |> unbox
+                        | _ ->
+                            Text.x (creature.x |> float)
+                            Text.y (creature.y |> float)
                         Text.verticalAlign Middle
                         Text.align Center
                         Text.fill Color.Black

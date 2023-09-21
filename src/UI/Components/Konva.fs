@@ -105,3 +105,6 @@ type Text =
     static member inline fontSize (fontSize: int) = mkTextAttr "fontSize" fontSize
     static member inline align (v: HorizontalAlign) = mkTextAttr "align" v
     static member inline verticalAlign (v: VerticalAlign) = mkTextAttr "verticalAlign" v
+
+type KonvaNode =
+    member inline to': obj -> unit
