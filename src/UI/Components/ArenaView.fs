@@ -148,7 +148,7 @@ let Arena (init, history': Msg list) =
                             circle [
                                 Circle.radius 25
                                 Circle.fill Color.Red
-                                //Circle.key ("circle" + toString creature.id)
+                                Circle.key "circle"
                                 Circle.offsetX -25
                                 Circle.offsetY -25
                                 ]
@@ -161,7 +161,7 @@ let Arena (init, history': Msg list) =
                                 match creature.text with
                                 | Some txt -> Text.text txt
                                 | None -> ()
-                                //Text.key ("txt" + toString creature.id)
+                                Text.key "name"
                                 ]
                             ]
                         ]
