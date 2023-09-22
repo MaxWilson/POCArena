@@ -6,6 +6,7 @@ open Feliz.UseListener
 open UI.Components.Sample
 open UI.Components.Arena
 open UI.Components.ArenaView
+open UI.Components.FightSetupView
 open Browser.Dom
 open Fable
 open Fable.Core.JsInterop
@@ -22,7 +23,7 @@ let Router() =
             match currentUrl with
             | [ "hello" ] -> Components.HelloWorld()
             | [ "counter" ] -> Components.Counter()
-            | otherwise ->
+            | [ "arena" ] ->
                 let state, dispatch = React.useElmishSimple init update
                 let frameArgs = {
                     className = "arena"
@@ -30,6 +31,8 @@ let Router() =
                     dispatch = dispatch
                     }
                 DefaultFrame frameArgs (Arena (init, state.history))
+            | otherwise ->
+                FightSetup()
         ]
     ]
 
