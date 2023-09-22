@@ -10,18 +10,29 @@ open UI.Components.Arena
 module private Impl =
     open Fable.Core.JsInterop
     let r = System.Random()
+    let mutable tracker = Map.empty
 
     type Movespec = { id: UniqueId; from: int * int; unto: int * int; afterwards: unit -> unit }
         with
         member this.start(node: KonvaNode) fin =
+            let id = this.id.ToString().Substring(0,6)
+            match tracker |> Map.tryFind this.id with
+            | Some lastPosition when lastPosition <> this.from ->
+                 printfn $"Expected to find {id} at {this.from} but it's at {lastPosition}"
+            | _ -> ()
             let square x = x * x
             let length = sqrt (square (fst this.from - fst this.unto) + square (snd this.from - snd this.unto) |> float)
+            printfn $"Begin move {id}"
             node.to' (createObj [
                 let x,y = this.unto
                 "x" ==> x
                 "y" ==> y
                 "duration" ==> ((float length) * 0.005 |> min 0.3)
-                "onFinish" ==> (fun () -> fin(); this.afterwards())
+                "onFinish" ==> (fun () ->
+                    printfn $"End move {id}"
+                    tracker <- tracker |> Map.add this.id this.unto
+                    fin()
+                    this.afterwards())
                 ])
     type Todo =
         | Tween of Movespec
@@ -73,6 +84,7 @@ let Arena (init, history': Msg list) =
     let futureCanon, setFutureCanon = React.useState init
     let knownHistory, setKnownHistory = React.useState []
     let executionQueue = React.useRef ([]: Todo list) // we need all the closures to share the same mutable queue
+    let animationInProgress, setAnimationInProgress = React.useState false
     let movingObject = React.useRef None
     // because React hooks including useLayoutEffect must happen a fixed number of times, we have to split Tween/Immediate execution between a layout effect and regular code
     // TODO: refactor this logic to be clearer
@@ -86,15 +98,16 @@ let Arena (init, history': Msg list) =
         | (Tween todo)::tail -> ()
             // pump() will happen from inside the Tween that's started in useLayoutEffect
     React.useLayoutEffect <| fun () ->
-        match executionQueue.current with
-        | [] -> () // nothing to do
-        | Immediate(todo)::tail -> ()
-        | (Tween todo)::tail ->
-            match movingObject.current with
-            | Some obj->
-                todo.start obj (fun () -> executionQueue.current <- tail)
-
-            | v -> shouldntHappen v
+        if animationInProgress |> not then
+            match executionQueue.current with
+            | [] -> () // nothing to do
+            | Immediate(todo)::tail -> ()
+            | (Tween todo)::tail ->
+                match movingObject.current with
+                | Some obj->
+                    setAnimationInProgress true
+                    todo.start obj (fun () -> executionQueue.current <- tail; setAnimationInProgress false)
+                | v -> shouldntHappen v
     let proj model model' = function
         | Clear | Add _ -> Some(Immediate(fun () -> setCanon model')) // we want to set ourselves in the state we'd be AFTER this message
         | Move(id, move) as msg ->
