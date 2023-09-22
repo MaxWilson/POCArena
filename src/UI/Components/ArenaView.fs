@@ -73,8 +73,7 @@ let Arena (init, history': Msg list) =
     let futureCanon, setFutureCanon = React.useState init
     let knownHistory, setKnownHistory = React.useState []
     let executionQueue = React.useRef ([]: Todo list) // we need all the closures to share the same mutable queue
-    let movingCircle = React.useRef None
-    let movingText = React.useRef None
+    let movingObject = React.useRef None
     // because React hooks including useLayoutEffect must happen a fixed number of times, we have to split Tween/Immediate execution between a layout effect and regular code
     // TODO: refactor this logic to be clearer
     let rec pump () =
@@ -91,10 +90,9 @@ let Arena (init, history': Msg list) =
         | [] -> () // nothing to do
         | Immediate(todo)::tail -> ()
         | (Tween todo)::tail ->
-            match movingCircle.current, movingText.current with
-            | Some circle, Some text ->
-                todo.start circle (fun () -> executionQueue.current <- tail)
-                //todo.start text
+            match movingObject.current with
+            | Some obj->
+                todo.start obj (fun () -> executionQueue.current <- tail)
 
             | v -> shouldntHappen v
     let proj model model' = function
@@ -136,39 +134,36 @@ let Arena (init, history': Msg list) =
                 ]
             Layer.create "arena" [
                 for creature in canon.creatures.Values do
-                    circle [
+                    group [
                         match executionQueue.current with
                         | (Tween { id = id; from = (x,y) } as head)::tail when id = creature.id ->
-                            Circle.x x
-                            Circle.y y
-                            Circle.ref (fun (n:KonvaNode) -> movingCircle.current <- Some n)
+                            Group.x x
+                            Group.y y
+                            Group.ref (fun node -> movingObject.current <- Some node)
                         | _ ->
-                            Circle.x (creature.x |> float)
-                            Circle.y (creature.y |> float)
-                        Circle.radius 25
-                        Circle.fill Color.Red
-                        Circle.key ("circle" + toString creature.id)
-                        Circle.offsetX -25
-                        Circle.offsetY -25
-                        ]
-                    text [
-                        match executionQueue.current with
-                        | (Tween { id = id; from = (x,y) } as head)::tail when id = creature.id ->
-                            Text.x x
-                            Text.y y
-                            Text.ref (fun (n:KonvaNode) -> movingText.current <- Some n)
-                        | _ ->
-                            Text.x (creature.x |> float)
-                            Text.y (creature.y |> float)
-                        Text.verticalAlign Middle
-                        Text.align Center
-                        Text.fill Color.Black
-                        Text.width 50
-                        Text.height 50
-                        match creature.text with
-                        | Some txt -> Text.text txt
-                        | None -> ()
-                        Text.key ("txt" + toString creature.id)
+                            Group.x creature.x
+                            Group.y creature.y
+                        Group.key (toString creature.id)
+                        Group.children [
+                            circle [
+                                Circle.radius 25
+                                Circle.fill Color.Red
+                                //Circle.key ("circle" + toString creature.id)
+                                Circle.offsetX -25
+                                Circle.offsetY -25
+                                ]
+                            text [
+                                Text.verticalAlign Middle
+                                Text.align Center
+                                Text.fill Color.Black
+                                Text.width 50
+                                Text.height 50
+                                match creature.text with
+                                | Some txt -> Text.text txt
+                                | None -> ()
+                                //Text.key ("txt" + toString creature.id)
+                                ]
+                            ]
                         ]
                 ]
             ]

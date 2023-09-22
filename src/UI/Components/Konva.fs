@@ -12,6 +12,9 @@ type IStageProperty =
 type ILayerProperty =
     interface end
 [<Erase>]
+type IGroupProperty =
+    interface end
+[<Erase>]
 type ICircleProperty =
     interface end
 [<Erase>]
@@ -25,6 +28,7 @@ type IShapeProperty =
     interface
         inherit IStageProperty
         inherit ILayerProperty
+        inherit IGroupProperty
         inherit ICircleProperty
         inherit IRectProperty
         inherit ITextProperty
@@ -35,12 +39,14 @@ module private Interop =
     let inline mkShapeAttr (key: string) (value: obj) : IShapeProperty = unbox (key, value)
     let inline mkStageAttr (key: string) (value: obj) : IStageProperty = unbox (key, value)
     let inline mkLayerAttr (key: string) (value: obj) : ILayerProperty = unbox (key, value)
+    let inline mkGroupAttr (key: string) (value: obj) : IGroupProperty = unbox (key, value)
     let inline mkCircleAttr (key: string) (value: obj) : ICircleProperty = unbox (key, value)
     let inline mkRectAttr (key: string) (value: obj) : IRectProperty = unbox (key, value)
     let inline mkTextAttr (key: string) (value: obj) : ITextProperty = unbox (key, value)
 
 let inline stage (props: IStageProperty list) = Interop.reactApi.createElement(import "Stage" "react-konva", createObj !!props)
 let inline layer (props: ILayerProperty list) = Interop.reactApi.createElement(import "Layer" "react-konva", createObj !!props)
+let inline group (props: IGroupProperty list) = Interop.reactApi.createElement(import "Group" "react-konva", createObj !!props)
 let inline circle (props: ICircleProperty list) = Interop.reactApi.createElement(import "Circle" "react-konva", createObj !!props)
 let inline rect (props: IRectProperty list) = Interop.reactApi.createElement(import "Rect" "react-konva", createObj !!props)
 let inline text (props: ITextProperty list) = Interop.reactApi.createElement(import "Text" "react-konva", createObj !!props)
@@ -94,6 +100,11 @@ type Layer =
     inherit Shape
     static member inline children (children: #ReactElement list) = mkLayerAttr "children" children
     static member inline create keyName children = layer [Layer.key keyName; Layer.children children]
+
+type Group =
+    inherit Shape
+    static member inline children (children: #ReactElement list) = mkGroupAttr "children" children
+    static member inline create keyName children = group [Group.key keyName; Group.children children]
 
 [<Erase>]
 type VerticalAlign = Top | Middle | Bottom
