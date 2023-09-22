@@ -10,29 +10,18 @@ open UI.Components.Arena
 module private Impl =
     open Fable.Core.JsInterop
     let r = System.Random()
-    let mutable tracker = Map.empty
-
     type Movespec = { id: UniqueId; from: int * int; unto: int * int; afterwards: unit -> unit }
         with
-        member this.start(node: KonvaNode) fin =
+        member this.start(node: KonvaNode) onFinish =
             let id = this.id.ToString().Substring(0,6)
-            match tracker |> Map.tryFind this.id with
-            | Some lastPosition when lastPosition <> this.from ->
-                 printfn $"Expected to find {id} at {this.from} but it's at {lastPosition}"
-            | _ -> ()
             let square x = x * x
             let length = sqrt (square (fst this.from - fst this.unto) + square (snd this.from - snd this.unto) |> float)
-            printfn $"Begin move {id}"
             node.to' (createObj [
                 let x,y = this.unto
                 "x" ==> x
                 "y" ==> y
                 "duration" ==> ((float length) * 0.005 |> min 0.3)
-                "onFinish" ==> (fun () ->
-                    printfn $"End move {id}"
-                    tracker <- tracker |> Map.add this.id this.unto
-                    fin()
-                    this.afterwards())
+                "onFinish" ==> (fun () -> onFinish(); this.afterwards())
                 ])
     type Todo =
         | Tween of Movespec
@@ -84,30 +73,34 @@ let Arena (init, history': Msg list) =
     let futureCanon, setFutureCanon = React.useState init
     let knownHistory, setKnownHistory = React.useState []
     let executionQueue = React.useRef ([]: Todo list) // we need all the closures to share the same mutable queue
-    let animationInProgress, setAnimationInProgress = React.useState false
+    let currentTransition, setCurrentTransition = React.useState None
     let movingObject = React.useRef None
+    let (|Inert|Ready|Transitioning|) () =
+        match currentTransition, executionQueue.current with
+        | Some m, _ -> Transitioning m
+        | None, [] -> Inert
+        | None, h::_ -> Ready h
     // because React hooks including useLayoutEffect must happen a fixed number of times, we have to split Tween/Immediate execution between a layout effect and regular code
     // TODO: refactor this logic to be clearer
     let rec pump () =
-        match executionQueue.current with
-        | [] -> () // nothing to do
-        | Immediate(todo)::tail ->
-            todo()
-            executionQueue.current <- tail
-            pump()
-        | (Tween todo)::tail -> ()
-            // pump() will happen from inside the Tween that's started in useLayoutEffect
+        match () with
+        | Transitioning _ -> () // we're already in the middle of a transition, don't start another one
+        | Inert -> () // nothing to do
+        | Ready (todo) ->
+            // move into transitioning state
+            executionQueue.current <- executionQueue.current.Tail
+            match todo with
+            | Immediate f -> f(); pump()
+            | Tween _ ->
+                setCurrentTransition (Some todo) // will trigger re-render, which will start tween
     React.useLayoutEffect <| fun () ->
-        if animationInProgress |> not then
-            match executionQueue.current with
-            | [] -> () // nothing to do
-            | Immediate(todo)::tail -> ()
-            | (Tween todo)::tail ->
-                match movingObject.current with
-                | Some obj->
-                    setAnimationInProgress true
-                    todo.start obj (fun () -> executionQueue.current <- tail; setAnimationInProgress false)
-                | v -> shouldntHappen v
+        match () with
+        | Transitioning (Tween todo) ->
+            match movingObject.current with
+            | Some obj->
+                todo.start obj (fun () -> setCurrentTransition None)
+            | v -> shouldntHappen v
+        | Inert | Ready _ | Transitioning(Immediate _) | _ -> ()
     let proj model model' = function
         | Clear | Add _ -> Some(Immediate(fun () -> setCanon model')) // we want to set ourselves in the state we'd be AFTER this message
         | Move(id, move) as msg ->
@@ -116,14 +109,11 @@ let Arena (init, history': Msg list) =
                 |> Tween |> Some
     let futureCanon', todo = CQRS.cqrsDiff update proj (futureCanon, knownHistory) history' // DON'T start the diff from canon, start it from the model we'll have after doing all the messages
         // we don't need the model output, that will come as commands flow through the execution queue
-    //if todo.Length > 0 then printfn $"{knownHistory} ==> {history'} yields TODO queue: {todo}"
-    if todo.Length > 0 then
-        let x = todo |> List.map (fun x -> (toString x).Substring(0,6))
-        let e = executionQueue.current |> List.map (fun x -> (toString x).Substring(0,6))
-        printfn $"Queueing: {x}"
-        printfn $"onto {e}"
     match todo with
-    | [] -> ()
+    | [] ->
+        match () with
+        | Ready _ -> pump()
+        | _ -> ()
     | h::t ->
         setKnownHistory history'
         setFutureCanon futureCanon'
@@ -148,8 +138,8 @@ let Arena (init, history': Msg list) =
             Layer.create "arena" [
                 for creature in canon.creatures.Values do
                     group [
-                        match executionQueue.current with
-                        | (Tween { id = id; from = (x,y) } as head)::tail when id = creature.id ->
+                        match () with
+                        | Transitioning(Tween { id = id; from = (x,y) }) when id = creature.id ->
                             Group.x x
                             Group.y y
                             Group.ref (fun node -> movingObject.current <- Some node)
