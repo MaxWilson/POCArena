@@ -10,27 +10,22 @@ open UI.Components.Arena
 module private Impl =
     open Fable.Core.JsInterop
     let r = System.Random()
-    let mutable tracker = Map.empty
-    type Movespec = { id: UniqueId; from: int * int; unto: int * int; afterwards: unit -> unit }
+    type Movespec = { id: UniqueId; from: int * int; unto: int * int; mutable started: bool; afterwards: unit -> unit }
         with
         member this.start(node: KonvaNode) =
-            let id = this.id.ToString().Substring(0,6)
-            let square x = x * x
-            let length = sqrt (square (fst this.from - fst this.unto) + square (snd this.from - snd this.unto) |> float)
-            match tracker |> Map.tryFind id with
-            | Some prev when prev <> this.from ->
-                printfn "Expected to find %A at %A, but it was at %A" id this.from prev
-            | _ -> ()
-            node.to' (createObj [
-                let x,y = this.unto
-                "x" ==> x
-                "y" ==> y
-                "duration" ==> ((float length) * 0.005 |> min 0.3)
-                "onFinish" ==> (fun () ->
-                    printfn $"Finished moving {id} to {this.unto}"
-                    tracker <- tracker |> Map.add id this.unto
-                    this.afterwards())
-                ])
+            if this.started then ()
+            else
+                this.started <- true
+                let id = this.id.ToString().Substring(0,6)
+                let square x = x * x
+                let length = sqrt (square (fst this.from - fst this.unto) + square (snd this.from - snd this.unto) |> float)
+                node.to' (createObj [
+                    let x,y = this.unto
+                    "x" ==> x
+                    "y" ==> y
+                    "duration" ==> ((float length) * 0.005 |> min 0.3)
+                    "onFinish" ==> (fun () -> this.afterwards())
+                    ])
     type Todo =
         | Tween of Movespec
         | Immediate of (unit -> unit)
@@ -113,7 +108,7 @@ let Arena (init, history': Msg list) =
         | Clear | Add _ -> Some(Immediate(fun () -> setCanon model')) // we want to set ourselves in the state we'd be AFTER this message
         | Move(id, move) as msg ->
             let c = model.creatures[id] // we want to start at where the creature was BEFORE this message and then move to where it should be AFTER
-            { id = id; from = (c.x, c.y); unto = updateViaMovement c move; afterwards = fun  () -> setCanon model'; setCurrentTransition None }
+            { id = id; from = (c.x, c.y); unto = updateViaMovement c move; started = false; afterwards = fun  () -> setCanon model'; setCurrentTransition None }
                 |> Tween |> Some
     let futureCanon', todo = CQRS.cqrsDiff update proj (futureCanon, knownHistory) history' // DON'T start the diff from canon, start it from the model we'll have after doing all the messages
         // we don't need the model output, that will come as commands flow through the execution queue
