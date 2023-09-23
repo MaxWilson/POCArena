@@ -174,12 +174,28 @@ img, picture, svg, video
 
 .slideFromTop
     animation: fromTop 0.5s ease-in-out
+.slideFromLeft
+    animation: fromLeft 0.5s ease-in-out
+.fadeIn
+    animation: fromTransparent 0.3s ease-in-out
 
 @keyframes fromTop
   0%
     transform: translateY(-100%)
   100%
     transform: translateY(0)
+
+@keyframes fromLeft
+  0%
+    transform: translateX(-100%)
+  100%
+    transform: translateY(0)
+
+@keyframes fromTransparent
+  0%
+    opacity: 0
+  100%
+    opacity: 1
 
 .busy
     height: 30vh

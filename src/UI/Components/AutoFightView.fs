@@ -346,23 +346,24 @@ let ViewCombat (setup, combatLog: CombatLog) dispatch =
         ]
 
 [<ReactComponent>]
-let ExecuteButton model dispatch =
-    React.useListener.onKeyDown(fun ev ->
-        if ev.key = "Enter" && ev.ctrlKey then ev.preventDefault(); beginFights model dispatch
-        )
-    Html.button [prop.text "Execute"; prop.onClick (thunk2 beginFights model dispatch)]
-
-[<ReactComponent>]
-let View (model: Model) dispatch =
-    match model.page with
-    | Home when model.execution = InProgress ->
-        class' "slideFromTop" Html.div [
+let ExecuteButton (model:Model) dispatch =
+    if model.execution = InProgress then
+        class' "fadeIn" Html.div [
             Html.div "Executing..."
             class' "busy" Html.div [
                 for _ in 1..10 do
                     class' "wave" Html.div []
                 ]
             ]
+    else
+        React.useListener.onKeyDown(fun ev ->
+            if ev.key = "Enter" && ev.ctrlKey then ev.preventDefault(); beginFights model dispatch
+            )
+        Html.button [prop.text "Execute"; prop.onClick (thunk2 beginFights model dispatch)]
+
+[<ReactComponent>]
+let View (model: Model) dispatch =
+    match model.page with
     | Editing name -> EditView name model.database dispatch
     | Home ->
         Html.div [

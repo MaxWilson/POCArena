@@ -17,8 +17,8 @@
     <Compile Include="UI\Components\LocalStorage.fs" />
     <Compile Include="UI\Components\Arena.fs" />
     <Compile Include="UI\Components\ArenaView.fs" />
-    <Compile Include="UI\Components\FightSetup.fs" />
-    <Compile Include="UI\Components\FightSetupView.fs" />
+    <Compile Include="UI\Components\AutoFight.fs" />
+    <Compile Include="UI\Components\AutoFightView.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>
   <ItemGroup>
