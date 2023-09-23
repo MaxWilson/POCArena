@@ -17,6 +17,7 @@ importSideEffects "./sass/main.sass"
 [<ReactComponent>]
 let Router() =
     let (currentUrl, updateUrl) = React.useState(Router.currentUrl())
+    let state, dispatch = React.useElmishSimple init update
     React.router [
         router.onUrlChanged updateUrl
         router.children [
@@ -24,7 +25,6 @@ let Router() =
             | [ "hello" ] -> Components.HelloWorld()
             | [ "counter" ] -> Components.Counter()
             | [ "arena" ] ->
-                let state, dispatch = React.useElmishSimple init update
                 let frameArgs = {
                     className = "arena"
                     model = state
@@ -46,27 +46,28 @@ module ReactErrorBoundary =
 
     type ErrorBoundaryProps =
         {   Inner : React.ReactElement
-            ErrorComponent : React.ReactElement
+            ErrorComponent : string -> React.ReactElement
             OnError : exn * InfoComponentObject -> unit }
 
     type ErrorBoundaryState =
-        { HasErrors : bool }
+        { Error : string option }
 
     // See https://github.com/MangelMaxime/Fulma/blob/master/docs/src/Widgets/Showcase.fs
     // See https://reactjs.org/docs/error-boundaries.html
     type ErrorBoundary(props) =
         inherit React.Component<ErrorBoundaryProps, ErrorBoundaryState>(props)
-        do base.setInitState({ HasErrors = false })
+        do base.setInitState({ Error = None })
 
         override this.componentDidCatch(error, info) =
             let info = info :?> InfoComponentObject
             this.props.OnError(error, info)
-            this.setState(fun _ _ -> { HasErrors = true })
+            this.setState(fun _ _ -> { Error = Some (error.ToString()) })
 
         override x.render() =
-            if (x.state.HasErrors) then
-                x.props.ErrorComponent
-            else
+            match x.state.Error with
+            | Some err ->
+                x.props.ErrorComponent err
+            | None ->
                 x.props.Inner
 
     // let ofType props children =
@@ -78,9 +79,9 @@ module ReactErrorBoundary =
         ReactElementType.create ReactElementType.ofComponent<ErrorBoundary,_,_> { Inner = element; ErrorComponent = errorElement; OnError = onError } [ ]
 
 let main() =
-    let err =
+    let err msg =
         class' "error" Html.div [
-            Html.text "There has been an error."
+            Html.text $"There has been an error: {msg}"
             ]
 
     ReactErrorBoundary.renderCatchSimple err <|
