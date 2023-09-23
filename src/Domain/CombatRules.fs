@@ -394,24 +394,29 @@ let createCombat (db: Map<string, Creature>) team1 team2 =
         |> Seq.map(fun c -> c.Id, c)
         |> Map.ofSeq
         }
-let specificFight db team1 team2 =
+let specificFight db team1 team2 = async {
     let cqrs = CQRS.CQRS.Create((createCombat db team1 team2), update)
     let victors = fight cqrs
-    cqrs.LogWithMessages(), victors
-let calibrate db team1 (enemyType, minbound, maxbound, defeatCriteria) =
-    let runForN n =
+    return cqrs.LogWithMessages(), victors
+    }
+let calibrate db team1 (enemyType, minbound, maxbound, defeatCriteria) = async {
+    let runForN n = async {
+        do! Async.Sleep 0 // yield the JS runtime  in case UI updates need to be processed
         let combat = createCombat db team1 [ n, enemyType ]
         let cqrs = CQRS.CQRS.Create(combat, update)
-        cqrs, fight cqrs
-    let mutable results = Map.empty
-    let get n =
-        if results.ContainsKey n then results[n]
+        return cqrs, fight cqrs
+        }
+    let mutable results: Map<_,int*CombatLog> = Map.empty
+    let get n = async {
+        if results.ContainsKey n then return results[n]
         else
-            let runs = [
-                for run in 1..10 do
-                    runForN n
-                ]
-            let sampleLog: CombatLog = (runs |> List.last |> fst).LogWithMessages()
+            let! runs =
+                [
+                    for run in 1..10 do
+                        runForN n
+                    ]
+                |> Async.Parallel
+            let sampleLog: CombatLog = (runs |> Array.last |> fst).LogWithMessages()
             let victoryMetric : CQRS.CQRS<_, Combat> * {| victors: int list |} -> int =
                 match defeatCriteria with
                 | TPK -> function (_, v) when v.victors = [1] -> 1 | otherwise -> 0
@@ -431,22 +436,28 @@ let calibrate db team1 (enemyType, minbound, maxbound, defeatCriteria) =
                             0
                         else 1
 
-            let victories = runs |> List.sumBy victoryMetric
+            let victories = runs |> Array.sumBy victoryMetric
             results <- results |> Map.add n (victories, sampleLog)
-            results[n]
+            return results[n]
+        }
     // crude and naive model: search from 1 to 100, but quit early when we fall to 0% victory
-    let upToOneHundred =
-        let rec loop n =
-            if get n |> fst > 0 && n <= 100 then
-                n::(loop (n+1))
-            else []
+    let! upToOneHundred =
+        let rec loop n = async {
+            let! (victories, log) as result = get n
+            if victories > 0 && n <= 100 then
+                let! looped = loop (n+1)
+                return (n, result)::looped
+            else return []
+            }
         loop 1
-    let inbounds n = betweenInclusive (minbound * 10. |> int) (maxbound * 10. |> int) (get n |> fst)
+    let inbounds (n, result) =
+        betweenInclusive (minbound * 10. |> int) (maxbound * 10. |> int) (result |> fst)
+
     match upToOneHundred |> List.filter inbounds with
     | [] ->
-        None, None, None
+        return None, None, None
     | inbounds ->
-        let min = inbounds |> List.min
-        let max = inbounds |> List.max
-        let sampleFight: CombatLog = get max |> snd
-        Some min, Some max, Some sampleFight
+        let min, _ = inbounds |> List.minBy fst
+        let max, (_, sampleFight) = inbounds |> List.maxBy fst
+        return Some min, Some max, Some sampleFight
+    }

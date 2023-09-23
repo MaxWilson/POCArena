@@ -100,7 +100,7 @@ let beginFights (model: Model) dispatch =
             | Calibrate(Some name, min, max, defeatCriteria) ->
                 let min = (defaultArg min 50 |> float) / 100.
                 let max = (defaultArg max 90 |> float) / 100.
-                match calibrate model.database.catalog
+                match! calibrate model.database.catalog
                         model.fightSetup.sideA
                         (name, min, max, defeatCriteria) with
                 | minQuantity, maxQuantity, Some sampleMaxFight ->
@@ -109,7 +109,7 @@ let beginFights (model: Model) dispatch =
                     Fight NotStarted |> dispatch
                     informUserOfError "Failed to find a number of monsters that would satisfy those constraints. Try a wider range like 20% to 100%"
             | Specific(sideB) ->
-                let fightResult = specificFight model.database.catalog model.fightSetup.sideA sideB
+                let! fightResult = specificFight model.database.catalog model.fightSetup.sideA sideB
                 (model.fightSetup, SpecificResult fightResult)
                     |> Completed
                     |> Fight
