@@ -44,3 +44,180 @@ img, picture, svg, video
     margin: 3px
     button
         margin: 6px
+
+.main
+    .fightSetup, .fightLog, .statistics, .commandInput
+        margin-top: 5px
+    .fightSetup
+        user-select: none
+    .fightSetup, .fightLog
+        border: thin solid black
+        padding: 3px
+        button, input
+            margin-right: 7px
+            margin-top: 3px
+            min-width: 1.5em
+        .editLink
+            margin-left: 3px
+            margin-right: 3px
+            color: #4007a2
+            color: -webkit-link
+            cursor: pointer
+            text-decoration: underline
+        .specificQuantity, .calibrated
+            margin: 3px
+            padding: 3px
+            border: 4px dashed lightgrey
+        .clearButton
+           float: right
+    .fightSetup
+        display: flex
+        flex-direction: row
+        flex-wrap: wrap
+        gap: 10px
+    .calibrationRange
+        input
+            padding: 2px
+            box-sizing: content-box
+            max-width: 3em
+            margin-left: 3px
+            margin-right: 3px
+        button
+            margin-left: 3px
+    .combat
+        display: grid
+        grid-template-columns: auto 1fr
+        grid-template-areas: "statusTable logButtons" "statusTable logEntries"
+        .statusTable
+            grid-area: statusTable
+            max-height: 55vh
+            overflow-y: auto
+            table
+                min-width: 25vw
+        .logButtons
+            user-select: none
+            grid-area: logButtons
+            button
+                margin: 5px
+                margin-right: 10px
+            input[type="checkbox"]
+                position: relative
+                top: 2px
+                left: 5px
+        .logEntries
+            grid-area: logEntries
+            max-height: calc(55vh - 30px)
+            overflow-y: auto
+            .details
+                margin-left: 8px
+                font-size: 0.8em
+            div
+                margin-bottom: 4px
+            .selected
+                background-color: lightgrey
+        .redName
+            color: red
+            font-weight: bold
+        .blueName
+            color: blue
+            font-weight: bold
+        .teamRed
+            background-color: lightpink
+        .teamBlue
+            background-color: lightblue
+        td:first-child
+            font-weight: bold
+        .statusDead, .statusDisabled, .statusOk
+            font-weight: bold
+        .statusDead
+            color: black
+        .statusDisabled
+            color: yellow
+        .statusOk
+            color: green
+        td
+            padding: 2px
+            border: thin solid black
+            text-align: center
+
+.editView
+    display: grid
+    grid-auto-columns: repeat(auto-fit, minmax(100px, 1fr))
+    grid-template-columns: auto 1fr
+    user-select: None
+    .error
+        color: red
+    input
+        max-width: 8em
+    input[type="number"]
+        max-width: 4em
+    input[type="checkbox"]
+        position: relative
+        top: 2px
+        left: 5px
+    .textview
+        grid-column: 1 / span 2
+        max-width: 100%
+    .editDamage input
+        max-width: 80px
+    button, input, select
+        margin-top: 5px
+        margin-right: 10px
+    .buttons
+        margin-top: 20px
+        grid-column: 1
+    input, select
+        margin-left: 5px
+    button
+        padding: 5px
+        margin-right: 50px
+
+.slideFromTop
+    animation: fromTop 0.5s ease-in-out
+
+@keyframes fromTop
+  0%
+    transform: translateY(-100%)
+  100%
+    transform: translateY(0)
+
+.busy
+    height: 30vh
+    display: flex
+    justify-content: center
+    align-items: center
+    background: #000
+    .wave
+        width: 10px
+        height: 100px
+        background: linear-gradient(45deg, cyan, #fff)
+        margin: 3vw
+        animation: wave 1s linear infinite
+        border-radius: 20px
+        transform: scale(0)
+    .wave:nth-child(2)
+        animation-delay: 0.1s
+    .wave:nth-child(3)
+        animation-delay: 0.2s
+    .wave:nth-child(4)
+        animation-delay: 0.3s
+    .wave:nth-child(5)
+        animation-delay: 0.4s
+    .wave:nth-child(6)
+        animation-delay: 0.5s
+    .wave:nth-child(7)
+        animation-delay: 0.6s
+    .wave:nth-child(8)
+        animation-delay: 0.7s
+    .wave:nth-child(9)
+        animation-delay: 0.8s
+    .wave:nth-child(10)
+        animation-delay: 0.9s
+
+@keyframes wave
+  0%
+    transform: scale(0)
+  50%
+    transform: scale(1)
+  100%
+    transform: scale(0)

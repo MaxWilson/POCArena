@@ -8,6 +8,9 @@
     <Compile Include="Core\Common.fs" />
     <Compile Include="Core\CQRS.fs" />
     <Compile Include="Core\Packrat.fs" />
+    <Compile Include="Domain\Random.fs" />
+    <Compile Include="Domain\Data.fs" />
+    <Compile Include="Domain\CombatRules.fs" />
     <Compile Include="UI\Components\Sample.fs" />
     <Compile Include="UI\Components\DragDrop.fs" />
     <Compile Include="UI\Components\Konva.fs" />
@@ -21,7 +24,7 @@
   <ItemGroup>
     <PackageReference Update="FSharp.Core" Version="7.*" />
     <PackageReference Include="Fable.React" Version="9.3.0" />
-    <PackageReference Include="Feliz" Version="2.6.0" NoWarn="NU1608"/>
+    <PackageReference Include="Feliz" Version="2.6.0" NoWarn="NU1608" />
     <PackageReference Include="Feliz.Delay" Version="1.0.0" />
     <PackageReference Include="Feliz.Router" Version="4.0.0" />
     <PackageReference Include="Feliz.UseElmish" Version="2.4.0" />

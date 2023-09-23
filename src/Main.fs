@@ -4,9 +4,9 @@ open Feliz
 open Feliz.Router
 open Feliz.UseListener
 open UI.Components.Sample
+open UI.Components.AutoFightView
 open UI.Components.Arena
 open UI.Components.ArenaView
-open UI.Components.FightSetupView
 open Browser.Dom
 open Fable
 open Fable.Core.JsInterop
@@ -32,7 +32,7 @@ let Router() =
                     }
                 DefaultFrame frameArgs (Arena (init, state.history))
             | otherwise ->
-                FightSetup()
+                AutoFight()
         ]
     ]
 

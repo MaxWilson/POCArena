@@ -29,13 +29,13 @@ module Cache =
 
 open Cache
 
-//module Catalog =
-//    open Domain
-//    let key = "Catalog"
-//    let cacheRead, cacheInvalidate = Cache.create()
-//    let read (): Map<string, Creature> =
-//        cacheRead (read key) (Domain.Defaults.database)
-//    let write (v: Map<string, Creature>) =
-//        write key v
-//        cacheInvalidate()
+module Catalog =
+   open Domain
+   let key = "Catalog"
+   let cacheRead, cacheInvalidate = Cache.create()
+   let read (): Map<string, Creature> =
+       cacheRead (read key) (Domain.Defaults.database)
+   let write (v: Map<string, Creature>) =
+       write key v
+       cacheInvalidate()
 

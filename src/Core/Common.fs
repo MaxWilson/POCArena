@@ -442,6 +442,9 @@ module UI =
             prop.children [element]
             ]
 
+    exception UserFacingException of msg:string
+    let informUserOfError msg = UserFacingException msg |> raise
+
     type React =
         static member inline useElmishSimple (init: _ -> 'model) (update: 'msg -> 'model -> 'model) =
             React.useElmish(fun _ -> Program.mkSimple init update (fun _ _ -> ()))
