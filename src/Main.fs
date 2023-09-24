@@ -13,11 +13,19 @@ open Fable.Core.JsInterop
 open Common.UI
 importSideEffects "./sass/main.sass"
 
+[<ReactComponent>]
+let Arena() =
+    let state, dispatch = React.useElmishSimple init update
+    let frameArgs = {
+        className = "arena"
+        model = state
+        dispatch = dispatch
+        }
+    DefaultFrame frameArgs (Arena (init, state.history))
 
 [<ReactComponent>]
 let Router() =
     let (currentUrl, updateUrl) = React.useState(Router.currentUrl())
-    let state, dispatch = React.useElmishSimple init update
     React.router [
         router.onUrlChanged updateUrl
         router.children [
@@ -40,13 +48,8 @@ let Router() =
             | [ "counter" ] -> Components.Counter()
             | [ "both" ] -> Components.HelloWorld(); Components.Counter()
             | [ "arena" ] ->
-                let frameArgs = {
-                    className = "arena"
-                    model = state
-                    dispatch = dispatch
-                    }
                 header "Interactive"
-                DefaultFrame frameArgs (Arena (init, state.history))
+                Arena()
             | [ "adventure" ] -> notImpl "Adventure mode"
             | [ "campaign" ] -> notImpl "Campaign mode"
             | otherwise ->
