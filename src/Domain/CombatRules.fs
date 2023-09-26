@@ -4,6 +4,22 @@ open Domain.Random
 
 type Status = OK | Stunned | Prone | Unconscious | Dead | Berserk
 type CombatantId = int * string
+type HitSide = Left | Right
+type HitLocation = Head | Torso | Arm of HitSide | Leg of HitSide | Hand of HitSide | Foot of HitSide | Vitals | Neck | Groin | Eye of HitSide | Skull
+type Destination = Person of CombatantId | Place of int * int
+type AttackDetails = {
+    // The difference between AttackDetails vs. Combatant is that AttackDetails is an "untrusted"
+    // request from the user--the user can request illegal levels of deceptive for example, or
+    // multiple Rapid Strikes. It's up to the GMing logic to verify rules compliance as part of
+    // action resolution.
+    target: CombatantId
+    rapidStrike: bool
+    location: HitLocation option
+    deceptiveLevels: int
+    }
+type Action =
+    | Attack of AttackDetails
+    | Move of Destination
 type Combatant = {
     personalName: string
     number: int
@@ -15,6 +31,8 @@ type Combatant = {
     retreatUsed: CombatantId option
     blockUsed: bool
     parriesUsed: int
+    attacksUsed: int
+    rapidStrikeUsed: bool
     }
     with
     member this.CurrentHP_ = this.stats.HP_ - this.injuryTaken
@@ -30,11 +48,24 @@ type Combatant = {
             retreatUsed = None
             blockUsed = false
             parriesUsed = 0
+            attacksUsed = 0
+            rapidStrikeUsed = false
             }
     member this.is (status: Status) = this.statusMods |> List.exists ((=) status)
     member this.isAny (statuses: Status list) = this.statusMods |> List.includes statuses
     member this.isnt (status: Status) = this.is status |> not
     member this.isnt (statuses: Status list) = this.isAny statuses |> not
+    static member newTurn (combatant: Combatant) =
+        { combatant
+            with
+            retreatUsed = None
+            blockUsed = false
+            parriesUsed = 0
+            attacksUsed = 0
+            rapidStrikeUsed = false
+            shockPenalty = 0
+            }
+
 type Combat = {
     combatants: Map<CombatantId, Combatant>
     }
@@ -75,13 +106,7 @@ module CombatEvents =
                         }
                 | None -> c)
         let newTurn (id: CombatantId) =
-            updateCombatant id (fun c ->
-                { c with
-                    retreatUsed = None
-                    blockUsed = false
-                    parriesUsed = 0
-                    shockPenalty = 0
-                    })
+            updateCombatant id Combatant.newTurn
         let takeDamage (id: CombatantId) amount conditions =
             updateCombatant id (fun c ->
                 let goingBerserk = conditions |> List.contains Berserk
