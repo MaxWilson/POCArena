@@ -429,6 +429,7 @@ let inline trace v =
 #endif
     v
 
+#if FABLE_COMPILER
 module UI =
     open Feliz
     open Elmish
@@ -448,3 +449,4 @@ module UI =
     type React =
         static member inline useElmishSimple (init: _ -> 'model) (update: 'msg -> 'model -> 'model) =
             React.useElmish(fun _ -> Program.mkSimple init update (fun _ _ -> ()))
+#endif
