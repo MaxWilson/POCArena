@@ -3,25 +3,26 @@
 
 let enemies = ["Bob", 10; "Joe", 14; "Sue", 6] |> Map.ofList
 
-type ActionResult = Success | Failure
-type ExecutionResult<'actionOut, 'memory, 'ctx> = Finished of ActionResult | Yield | DoAction of 'actionOut * 'memory * Behavior<'actionOut, 'memory, 'ctx>
-and Behavior<'actionOut, 'memory, 'ctx> = ActionResult * 'memory * 'ctx -> ExecutionResult<'actionOut, 'memory, 'ctx>
+type Feedback = Success | Failure
+type ExecutionResult<'actionOut, 'memory, 'ctx> = Finished of Feedback | Yield | DoAction of 'actionOut * 'memory * Behavior<'actionOut, 'memory, 'ctx>
+and Behavior<'actionOut, 'memory, 'ctx> = Feedback * 'memory * 'ctx -> ExecutionResult<'actionOut, 'memory, 'ctx>
 type ActionRequest<'actionOut, 'memory> = ActionRequest of 'actionOut * 'memory
 type QueryRequest<'memory, 'ctx, 'result> = QueryRequest of ('memory * 'ctx -> 'result)
-let bind (lhs: Behavior<'action, 'memory, 'context>) (rhs: Behavior<'action,_,'context>) : Behavior<'action, _, 'context> =
-    fun (s, m, c) ->
-        match lhs(s, m, c) with
-        | Finished a -> rhs(a,m,c)
-        | Yield -> Yield
-        | DoAction(a, m', continuation) -> DoAction(a, m', notImpl())
+let run (bhv: Behavior<_,_,_>) (a,m,c) = bhv(a,m,c)
+let bind (lhs: Behavior<'action, 'memory, 'context>) (binder: _ -> Behavior<'action,_,'context>) : Behavior<'action, _, 'context> =
+    fun (a, m, c) ->
+        match run lhs (a, m, c) with
+        | (Finished _ | Yield) as result -> result
+        | DoAction(a, m', continuation) -> DoAction(a, m', run continuation)
 
 type BehaviorBuilder() =
-    member this.Return (x: ActionResult) = fun _ -> Finished x
+    member this.Return (x: Feedback) = fun _ -> Finished x
     member this.ReturnFrom (x: Behavior<_,_,_>) = x
     // member this.Bind(b, f) = bind b f
-    member this.Bind(ActionRequest(action, mem), bhv: (ActionResult * 'memory * 'context -> ExecutionResult<_,_,_>)) =
+    member this.Bind(ActionRequest(action, mem), bhv: Behavior<_,_,_>) =
         // we discard the action/memory/context here, but we might have used them previously via QueryRequest to construct the action we're requesting
-        fun (action0, memory0, context0) -> DoAction(action, mem, bhv)
+        fun (action0, memory0, context0) ->
+            DoAction(action, mem, run bhv)
     // member this.Bind(b: QueryRequest<_,_,'result>, f: 'result -> Behavior<_,_,_>) =
     //     fun(a, m, c) ->
     //         let (QueryRequest qf) = b
@@ -59,18 +60,18 @@ let trivial0 =
     // b.Delay(fun() -> b.Return(Failure))
 let almosttrivial0(): Behavior<_,_,_> =
     let b = behavior
-    b.Bind(ActionRequest(attack "Bob", notImpl()), fun (result: ActionResult, mem: Memory, ctx: Context) -> b.Return(Failure))
+    b.Bind(ActionRequest(attack "Bob", notImpl()), fun (result: Feedback, mem: Memory, ctx: Context) -> b.Return(Failure))
 // let almosttrivialB0(): Behavior<_,_,_> =
 //     let b = behavior
 //     b.Delay(fun() -> b.Bind(ActionRequest(attack "Bob", notImpl()), fun (result: ActionResult, mem: Memory, ctx: Context) -> b.Return(Failure)))
 
 let almosttrivial(): Behavior<_,_,_> = behavior {
-    let! (result: ActionResult, mem: Memory, ctx: Context) = ActionRequest(attack "Bob", notImpl())
+    let! (result: Feedback, mem: Memory, ctx: Context) = ActionRequest(attack "Bob", notImpl())
     return Failure
     }
 let almosttrivial2(): Behavior<_,_,_> =
     let b = behavior
-    let bind(ActionRequest(action, mem), bhv: (ActionResult * 'memory * 'context -> ExecutionResult<_,_,_>)) =
+    let bind(ActionRequest(action, mem), bhv: (Feedback * 'memory * 'context -> ExecutionResult<_,_,_>)) =
         fun (action, mem', ctx) -> DoAction(action, mem, bhv)
     bind(ActionRequest(attack "Bob", notImpl()), fun (result, mem, ctx) -> b.Return Failure) // is this the root of the problem here? If result/mem/ctx were already on b.Return Failure it would be perfect. bind(..., b.Return Failure) would work.
     // if we take a cue from the state monad, https://dev.to/shimmer/the-state-monad-in-f-3ik0,
@@ -82,21 +83,21 @@ let almosttrivial2(): Behavior<_,_,_> =
                 let result, state' = stateful |> run state
                 binder result |> run state')
         *)
-    // notice how the pattern is run ==> binder ==> run, and the "let" binding is occuring in binder. What's the equivalent for behavior?
+    // notice how the pattern is Wrap(run ==> binder ==> run), and the "let" binding is occuring in binder. What's the equivalent for behavior?
 
 let quasitrivial = behavior {
-    let! (result: ActionResult, mem: Memory, ctx: Context) = ActionRequest(attack "Bob", notImpl())
-    let! (result: ActionResult, mem: Memory, ctx: Context) = ActionRequest(attack "Bob", notImpl())
+    let! (result: Feedback, mem: Memory, ctx: Context) = ActionRequest(attack "Bob", notImpl())
+    let! (result: Feedback, mem: Memory, ctx: Context) = ActionRequest(attack "Bob", notImpl())
     return Failure
     }
 let quasitrivial1 =
     let b = behavior
     b.Bind(
         ActionRequest(attack "Bob", notImpl()),
-        fun (result: ActionResult, mem: Memory, ctx: Context) ->
+        fun (result: Feedback, mem: Memory, ctx: Context) ->
             b.Bind(
                 ActionRequest(attack "Bob", notImpl()),
-                fun (result: ActionResult, mem: Memory, ctx: Context) ->
+                fun (result: Feedback, mem: Memory, ctx: Context) ->
                     b.Return(Failure)
                 )
             )
