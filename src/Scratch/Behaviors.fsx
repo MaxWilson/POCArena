@@ -4,25 +4,39 @@
 let enemies = ["Bob", 10; "Joe", 14; "Sue", 6] |> Map.ofList
 
 type Feedback = Success | Failure
-type ExecutionResult<'actionOut, 'memory, 'ctx> = Finished of Feedback | Yield | DoAction of 'actionOut * 'memory * Behavior<'actionOut, 'memory, 'ctx>
+type ExecutionResult<'actionOut, 'memory, 'ctx> = Finished of Feedback | Yield | AwaitingAction of 'actionOut * 'memory * Behavior<'actionOut, 'memory, 'ctx>
 and Behavior<'actionOut, 'memory, 'ctx> = Feedback * 'memory * 'ctx -> ExecutionResult<'actionOut, 'memory, 'ctx>
-type ActionRequest<'actionOut, 'memory> = ActionRequest of 'actionOut * 'memory
+type ReturnAction<'actionOut, 'memory> = ReturnAction of 'actionOut * 'memory
 type QueryRequest<'memory, 'ctx, 'result> = QueryRequest of ('memory * 'ctx -> 'result)
 let run (bhv: Behavior<_,_,_>) (a,m,c) = bhv(a,m,c)
 let bind (lhs: Behavior<'action, 'memory, 'context>) (binder: _ -> Behavior<'action,_,'context>) : Behavior<'action, _, 'context> =
     fun (a, m, c) ->
         match run lhs (a, m, c) with
         | (Finished _ | Yield) as result -> result
-        | DoAction(a, m', continuation) -> DoAction(a, m', run continuation)
+        | AwaitingAction(a, m', continuation) -> AwaitingAction(a, m', run continuation)
 
 type BehaviorBuilder() =
     member this.Return (x: Feedback) = fun _ -> Finished x
     member this.ReturnFrom (x: Behavior<_,_,_>) = x
     // member this.Bind(b, f) = bind b f
-    member this.Bind(ActionRequest(action, mem), bhv: Behavior<_,_,_>) =
-        // we discard the action/memory/context here, but we might have used them previously via QueryRequest to construct the action we're requesting
-        fun (action0, memory0, context0) ->
-            DoAction(action, mem, run bhv)
+    member this.Bind(ReturnAction(action, mem), binder: _ -> Behavior<_,_,_>) =
+        fun (feedback, memory0, context0) ->
+            let followupBehavior = binder (feedback, memory0, context0) // What makes this tricky is that we will need two sets of arguments to get a final result
+            (* consider a block of behavior that looks like this:
+
+               let! feedback, memory, context = ReturnAction(SimpleAttack, mem)
+               return if feedback > 0 then Success else Failure
+
+               From the caller's perspective, this looks like two separate, nested behaviors
+
+               let AwaitingAction(action1, memory1, continuation) = behavior(...) // this is the ReturnAction
+               let Finished Failure = continuation (feedback, memory1, context) // Here's where we consume feedback and evaluate it to produce a result.
+
+               So even though it LOOKS at first like it's weird for memory0 to get fed to followupBehavior, it actually makes sense
+               because mem and action are outputs whereas feedback and memory0 are inputs.
+            *)
+            // previously, // we discard the action/memory/context here, but we might have used them previously via QueryRequest to construct the action we're requesting
+            AwaitingAction(action, mem, run followupBehavior)
     // member this.Bind(b: QueryRequest<_,_,'result>, f: 'result -> Behavior<_,_,_>) =
     //     fun(a, m, c) ->
     //         let (QueryRequest qf) = b
@@ -60,20 +74,20 @@ let trivial0 =
     // b.Delay(fun() -> b.Return(Failure))
 let almosttrivial0(): Behavior<_,_,_> =
     let b = behavior
-    b.Bind(ActionRequest(attack "Bob", notImpl()), fun (result: Feedback, mem: Memory, ctx: Context) -> b.Return(Failure))
+    b.Bind(ReturnAction(attack "Bob", notImpl()), fun (result: Feedback, mem: Memory, ctx: Context) -> b.Return(Failure))
 // let almosttrivialB0(): Behavior<_,_,_> =
 //     let b = behavior
 //     b.Delay(fun() -> b.Bind(ActionRequest(attack "Bob", notImpl()), fun (result: ActionResult, mem: Memory, ctx: Context) -> b.Return(Failure)))
 
 let almosttrivial(): Behavior<_,_,_> = behavior {
-    let! (result: Feedback, mem: Memory, ctx: Context) = ActionRequest(attack "Bob", notImpl())
+    let! (result: Feedback, mem: Memory, ctx: Context) = ReturnAction(attack "Bob", notImpl())
     return Failure
     }
 let almosttrivial2(): Behavior<_,_,_> =
     let b = behavior
-    let bind(ActionRequest(action, mem), bhv: (Feedback * 'memory * 'context -> ExecutionResult<_,_,_>)) =
-        fun (action, mem', ctx) -> DoAction(action, mem, bhv)
-    bind(ActionRequest(attack "Bob", notImpl()), fun (result, mem, ctx) -> b.Return Failure) // is this the root of the problem here? If result/mem/ctx were already on b.Return Failure it would be perfect. bind(..., b.Return Failure) would work.
+    let bind(ReturnAction(action, mem), bhv: (Feedback * 'memory * 'context -> ExecutionResult<_,_,_>)) =
+        fun (action, mem', ctx) -> AwaitingAction(action, mem, bhv)
+    bind(ReturnAction(attack "Bob", notImpl()), fun (result, mem, ctx) -> b.Return Failure) // is this the root of the problem here? If result/mem/ctx were already on b.Return Failure it would be perfect. bind(..., b.Return Failure) would work.
     // if we take a cue from the state monad, https://dev.to/shimmer/the-state-monad-in-f-3ik0,
     // we should be accepting a binder as rhs and not a behavior directly:
     (*
@@ -86,17 +100,17 @@ let almosttrivial2(): Behavior<_,_,_> =
     // notice how the pattern is Wrap(run ==> binder ==> run), and the "let" binding is occuring in binder. What's the equivalent for behavior?
 
 let quasitrivial = behavior {
-    let! (result: Feedback, mem: Memory, ctx: Context) = ActionRequest(attack "Bob", notImpl())
-    let! (result: Feedback, mem: Memory, ctx: Context) = ActionRequest(attack "Bob", notImpl())
+    let! (result: Feedback, mem: Memory, ctx: Context) = ReturnAction(attack "Bob", notImpl())
+    let! (result: Feedback, mem: Memory, ctx: Context) = ReturnAction(attack "Bob", notImpl())
     return Failure
     }
 let quasitrivial1 =
     let b = behavior
     b.Bind(
-        ActionRequest(attack "Bob", notImpl()),
+        ReturnAction(attack "Bob", notImpl()),
         fun (result: Feedback, mem: Memory, ctx: Context) ->
             b.Bind(
-                ActionRequest(attack "Bob", notImpl()),
+                ReturnAction(attack "Bob", notImpl()),
                 fun (result: Feedback, mem: Memory, ctx: Context) ->
                     b.Return(Failure)
                 )
@@ -125,7 +139,7 @@ let kill2 =
             | None -> Finished Success
             | Some target ->
                 let mem = notImpl "attacking target"
-                let q = ActionRequest(attack target, mem)
+                let q = ReturnAction(attack target, mem)
                 let bhv: Behavior<_,_,_> = (fun (result, mem, ctx) ->
                     let inflictedInjury result ctx = notImpl "detect whether the attack inflicted injury--more than just a simple success/failure check"
                     if result = Success && inflictedInjury result ctx then
