@@ -4,8 +4,10 @@
 let enemies = ["Bob", 10; "Joe", 14; "Sue", 6] |> Map.ofList
 
 type ActionResult = Success | Failure
-type ExecutionResult<'action, 'memory> = Finished of ActionResult | Yield | DoAction of 'action * 'memory
-type Behavior<'action, 'memory, 'ctx> = ActionResult * 'memory * 'ctx -> ExecutionResult<'action, 'memory>
+type ExecutionResult<'action, 'memory, 'ctx> = Finished of ActionResult | Yield | DoAction of 'action * 'memory * Behavior<'action, 'memory, 'ctx>
+and Behavior<'action, 'memory, 'ctx> = ActionResult * 'memory * 'ctx -> ExecutionResult<'action, 'memory, 'ctx>
+type ActionRequest<'action, 'memory> = ActionRequest of 'action * 'memory
+type QueryRequest<'memory, 'ctx, 'result> = QueryRequest of ('memory * 'ctx -> 'result)
 type Action = class end // make these concrete at first just to make dev easier
 type Context = {
     enemyHP: Map<string, int>
@@ -17,13 +19,14 @@ let bind (lhs: Behavior<Action, Memory, Context>) (rhs: Behavior<Action,_,Contex
         match lhs(s, m, c) with
         | Finished a -> rhs(a,m,c)
         | Yield -> Yield
-        | DoAction(a, m') -> DoAction(a, m')
+        | DoAction(a, m', continuation) -> DoAction(a, m', notImpl())
 
 type BehaviorBuilder() =
     member this.Return (x: ActionResult) : Behavior<_,_,_> = fun _ -> Finished x
     member this.ReturnFrom (x: Behavior<_,_,_>) = x
     member this.Bind(b, f) = bind b f
-    member this.Bind(b: ExecutionResult<Action, Memory>, f: (_*_*_) -> Behavior<_,_,_>) = notImpl()
+    member this.Bind(b: ActionRequest<_,_>, f: (_*_*_) -> Behavior<_,_,_>) = notImpl()
+    member this.Bind(b: QueryRequest<_,_,'result>, f: 'result -> Behavior<_,_,_>) = notImpl()
     // member this.Delay(f) = f()
     // member this.Zero() = fun _ -> None
     // member this.Run(b, s, m) = b(s, m)
@@ -36,19 +39,19 @@ type AttackMemory = {
     }
     with static member fresh = { target = None }
 
-let trivial = behavior { return Success }
+let trivial() = behavior { return Success }
 
-let rec kill = behavior {
-    let target = Finished Success |> Some //fun (_, mem: AttackMemory, ctx: Ctx) -> mem.target |> Option.defaultWith (fun () -> ctx.enemyHP |> Map.tryPick (fun name hp -> if hp > 0 then Some name else None))
+let rec kill() = behavior {
+    let! target = QueryRequest <| fun (mem: AttackMemory, ctx: Context) -> mem.target |> Option.orElseWith (fun () -> ctx.enemyHP |> Map.tryPick (fun name hp -> if hp > 0 then Some name else None))
     match target with
     | None -> return Success
     | Some target ->
         let mem = notImpl "attacking target"
-        let! (result, mem, ctx) = DoAction(attack target, mem)
+        let! (result, mem, ctx) = ActionRequest(attack target, mem)
         let inflictedInjury result ctx = notImpl "detect whether the attack inflicted injury--more than just a simple success/failure check"
         if result = Success && inflictedInjury result ctx then
             // keep attacking
-            return! trivial // kill ctx // how to keep the state? Is recursion even the right way to continue here?
+            return! kill() // kill ctx // how to keep the state? Is recursion even the right way to continue here?
         else return Failure // todo: try attacking a different target first
     }
 
@@ -60,7 +63,7 @@ let kill2 =
             | None -> Finished Success
             | Some target ->
                 let mem = notImpl "attacking target"
-                let q = DoAction(attack target, mem)
+                let q = ActionRequest(attack target, mem)
                 bind(q, fun (result, mem, ctx) ->
                     let inflictedInjury result ctx = notImpl "detect whether the attack inflicted injury--more than just a simple success/failure check"
                     if result = Success && inflictedInjury result ctx then
