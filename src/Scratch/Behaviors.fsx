@@ -23,6 +23,7 @@ type BehaviorBuilder() =
     member this.Return (x: ActionResult) : Behavior<_,_,_> = fun _ -> Finished x
     member this.ReturnFrom (x: Behavior<_,_,_>) = x
     member this.Bind(b, f) = bind b f
+    member this.Bind(b: ExecutionResult<Action, Memory>, f: (_*_*_) -> Behavior<_,_,_>) = notImpl()
     // member this.Delay(f) = f()
     // member this.Zero() = fun _ -> None
     // member this.Run(b, s, m) = b(s, m)
@@ -47,11 +48,26 @@ let rec kill = behavior {
         let inflictedInjury result ctx = notImpl "detect whether the attack inflicted injury--more than just a simple success/failure check"
         if result = Success && inflictedInjury result ctx then
             // keep attacking
-            let continue1: int = kill ctx
-            return! kill ctx // how to keep the state? Is recursion even the right way to continue here?
-        else return Finished Failure // todo: try attacking a different target first
+            return! trivial // kill ctx // how to keep the state? Is recursion even the right way to continue here?
+        else return Failure // todo: try attacking a different target first
     }
 
+let kill2 =
+    fun (a, m, c) ->
+        let bind = notImpl
+        bind(Finished Success, fun target ->
+            match target with
+            | None -> Finished Success
+            | Some target ->
+                let mem = notImpl "attacking target"
+                let q = DoAction(attack target, mem)
+                bind(q, fun (result, mem, ctx) ->
+                    let inflictedInjury result ctx = notImpl "detect whether the attack inflicted injury--more than just a simple success/failure check"
+                    if result = Success && inflictedInjury result ctx then
+                        // keep attacking
+                        trivial(result, mem, ctx) // kill ctx // how to keep the state? Is recursion even the right way to continue here?
+                    else Finished Failure // todo: try attacking a different target first
+                    ))
 
 
 (*
