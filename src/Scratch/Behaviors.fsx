@@ -16,16 +16,18 @@ let bind (lhs: Behavior<'action, 'memory, 'context>) (rhs: Behavior<'action,_,'c
         | DoAction(a, m', continuation) -> DoAction(a, m', notImpl())
 
 type BehaviorBuilder() =
-    member this.Return (x: ActionResult) = Finished x
+    member this.Return (x: ActionResult) = fun _ -> Finished x
     member this.ReturnFrom (x: Behavior<_,_,_>) = x
-    member this.Bind(b, f) = bind b f
+    // member this.Bind(b, f) = bind b f
     member this.Bind(ActionRequest(action, mem), bhv: (ActionResult * 'memory * 'context -> ExecutionResult<_,_,_>)) =
-        DoAction(action, mem, bhv)
-    member this.Bind(b: QueryRequest<_,_,'result>, f: 'result -> Behavior<_,_,_>) =
-        fun(a, m, c) ->
-            let (QueryRequest qf) = b
-            let r = qf(m,c)
-            (f r)(a,m,c)
+        // we discard the action/memory/context here, but we might have used them previously via QueryRequest to construct the action we're requesting
+        fun (action0, memory0, context0) -> DoAction(action, mem, bhv)
+    // member this.Bind(b: QueryRequest<_,_,'result>, f: 'result -> Behavior<_,_,_>) =
+    //     fun(a, m, c) ->
+    //         let (QueryRequest qf) = b
+    //         let r = qf(m,c)
+    //         (f r)(a,m,c)
+    // member this.Delay f = f
     // member this.Delay(f): Behavior<_,_,_> = fun(action, memory, context) -> f()(action, memory, context)
     // member this.Zero() = fun _ -> None
     // member this.Run(b, s, m) = b(s, m)
@@ -47,19 +49,57 @@ type AttackMemory = {
 let trivial: Behavior<_,_,_> = behavior {
     return Failure
     }
+let trivial0 =
+    let b = behavior
+    let x = b.Return(Failure)
+    x
+    // delay is not helpful here, since f just winds up argless and wrapped. Doesn't help propagate action/memory/context down into x. It's just a delay.
+    // let f = fun() -> x
+    // let d = b.Delay f
+    // b.Delay(fun() -> b.Return(Failure))
+let almosttrivial0(): Behavior<_,_,_> =
+    let b = behavior
+    b.Bind(ActionRequest(attack "Bob", notImpl()), fun (result: ActionResult, mem: Memory, ctx: Context) -> b.Return(Failure))
+// let almosttrivialB0(): Behavior<_,_,_> =
+//     let b = behavior
+//     b.Delay(fun() -> b.Bind(ActionRequest(attack "Bob", notImpl()), fun (result: ActionResult, mem: Memory, ctx: Context) -> b.Return(Failure)))
+
 let almosttrivial(): Behavior<_,_,_> = behavior {
     let! (result: ActionResult, mem: Memory, ctx: Context) = ActionRequest(attack "Bob", notImpl())
     return Failure
     }
 let almosttrivial2(): Behavior<_,_,_> =
+    let b = behavior
     let bind(ActionRequest(action, mem), bhv: (ActionResult * 'memory * 'context -> ExecutionResult<_,_,_>)) =
-        DoAction(action, mem, bhv)
-    bind(ActionRequest(attack "Bob", notImpl()), fun (result, mem, ctx) -> Failure)
+        fun (action, mem', ctx) -> DoAction(action, mem, bhv)
+    bind(ActionRequest(attack "Bob", notImpl()), fun (result, mem, ctx) -> b.Return Failure) // is this the root of the problem here? If result/mem/ctx were already on b.Return Failure it would be perfect. bind(..., b.Return Failure) would work.
+    // if we take a cue from the state monad, https://dev.to/shimmer/the-state-monad-in-f-3ik0,
+    // we should be accepting a binder as rhs and not a behavior directly:
+    (*
+        /// ('a -> Stateful<'state, 'b>) -> Stateful<'state, 'a> -> Stateful<'state, 'b>
+        let bind binder stateful =
+            Stateful (fun state ->
+                let result, state' = stateful |> run state
+                binder result |> run state')
+        *)
+    // notice how the pattern is run ==> binder ==> run, and the "let" binding is occuring in binder. What's the equivalent for behavior?
 
 let quasitrivial = behavior {
     let! (result: ActionResult, mem: Memory, ctx: Context) = ActionRequest(attack "Bob", notImpl())
+    let! (result: ActionResult, mem: Memory, ctx: Context) = ActionRequest(attack "Bob", notImpl())
     return Failure
     }
+let quasitrivial1 =
+    let b = behavior
+    b.Bind(
+        ActionRequest(attack "Bob", notImpl()),
+        fun (result: ActionResult, mem: Memory, ctx: Context) ->
+            b.Bind(
+                ActionRequest(attack "Bob", notImpl()),
+                fun (result: ActionResult, mem: Memory, ctx: Context) ->
+                    b.Return(Failure)
+                )
+            )
 
 let rec kill(): Behavior<_,_,_> = behavior {
     let! target = QueryRequest <| fun (mem: AttackMemory, ctx: Context) -> mem.target |> Option.orElseWith (fun () -> ctx.enemyHP |> Map.tryPick (fun name hp -> if hp > 0 then Some name else None))
