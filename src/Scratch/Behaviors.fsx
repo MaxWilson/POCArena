@@ -51,6 +51,10 @@ let almosttrivial(): Behavior<_,_,_> = behavior {
     let! (result: ActionResult, mem: Memory, ctx: Context) = ActionRequest(attack "Bob", notImpl())
     return Failure
     }
+let almosttrivial2(): Behavior<_,_,_> =
+    let bind(ActionRequest(action, mem), bhv: (ActionResult * 'memory * 'context -> ExecutionResult<_,_,_>)) =
+        DoAction(action, mem, bhv)
+    bind(ActionRequest(attack "Bob", notImpl()), fun (result, mem, ctx) -> Failure)
 
 let quasitrivial = behavior {
     let! (result: ActionResult, mem: Memory, ctx: Context) = ActionRequest(attack "Bob", notImpl())
