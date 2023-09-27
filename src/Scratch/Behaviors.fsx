@@ -25,8 +25,13 @@ type BehaviorBuilder() =
     member this.Return (x: ActionResult) : Behavior<_,_,_> = fun _ -> Finished x
     member this.ReturnFrom (x: Behavior<_,_,_>) = x
     member this.Bind(b, f) = bind b f
-    member this.Bind(b: ActionRequest<_,_>, f: (_*_*_) -> Behavior<_,_,_>) = notImpl()
-    member this.Bind(b: QueryRequest<_,_,'result>, f: 'result -> Behavior<_,_,_>) = notImpl()
+    member this.Bind(ActionRequest(action, mem), bhv: Behavior<_,_,_>) =
+        DoAction(action, mem, bhv)
+    member this.Bind(b: QueryRequest<_,_,'result>, f: 'result -> Behavior<_,_,_>) =
+        fun(a, m, c) ->
+            let (QueryRequest qf) = b
+            let r = qf(m,c)
+            (f r)(a,m,c)
     // member this.Delay(f) = f()
     // member this.Zero() = fun _ -> None
     // member this.Run(b, s, m) = b(s, m)
@@ -47,7 +52,7 @@ let rec kill() = behavior {
     | None -> return Success
     | Some target ->
         let mem = notImpl "attacking target"
-        let! (result, mem, ctx) = ActionRequest(attack target, mem)
+        let! (result: ActionResult, mem: Memory, ctx: Context) = ActionRequest(attack target, mem)
         let inflictedInjury result ctx = notImpl "detect whether the attack inflicted injury--more than just a simple success/failure check"
         if result = Success && inflictedInjury result ctx then
             // keep attacking
@@ -68,7 +73,7 @@ let kill2 =
                     let inflictedInjury result ctx = notImpl "detect whether the attack inflicted injury--more than just a simple success/failure check"
                     if result = Success && inflictedInjury result ctx then
                         // keep attacking
-                        trivial(result, mem, ctx) // kill ctx // how to keep the state? Is recursion even the right way to continue here?
+                        trivial()(result, mem, ctx) // kill ctx // how to keep the state? Is recursion even the right way to continue here?
                     else Finished Failure // todo: try attacking a different target first
                     ))
 
