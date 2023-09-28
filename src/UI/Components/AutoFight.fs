@@ -30,6 +30,7 @@ type Msg =
     | SetPage of Page
     | Fight of (FightSetup * FightResult) Awaitable
 
+open Common
 open Fable.Core
 open Feliz
 open Elmish
@@ -38,7 +39,6 @@ open Domain
 open Domain.CombatRules
 open Domain.Random
 open Domain.Random.Parser
-open Common.UI
 open Feliz.UseListener
 
 [<Emit("$0.scrollIntoView({block: 'nearest', inline: 'nearest'})")>]

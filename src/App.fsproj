@@ -3,11 +3,13 @@
     <TargetFramework>net7.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Scratch\Behaviors.fsx" />
+    <None Include="Scratch\Behaviors.fsx" />
     <None Include="index.html" />
     <None Include="sass/main.sass" />
     <Compile Include="Core\Common.fs" />
+    <Compile Include="Core\CommonUI.fs" />
     <Compile Include="Core\CQRS.fs" />
+    <Compile Include="Core\Coroutine.fs" />
     <Compile Include="Core\Packrat.fs" />
     <Compile Include="Domain\Random.fs" />
     <Compile Include="Domain\Data.fs" />

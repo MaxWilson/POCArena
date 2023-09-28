@@ -1,12 +1,12 @@
 module UI.Components.ArenaView
 
 open System
-open Common.UI
 open UI.Konva
 open Feliz
 open Feliz.UseElmish
 open Elmish
 open UI.Components.Arena
+
 module private Impl =
     open Fable.Core.JsInterop
     let r = System.Random()

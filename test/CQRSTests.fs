@@ -2,6 +2,7 @@ module CQRS.Tests
 
 open Expecto
 open Swensen.Unquote
+open Common
 
 [<Tests>]
 let tests =

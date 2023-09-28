@@ -10,7 +10,6 @@ open UI.Components.ArenaView
 open Browser.Dom
 open Fable
 open Fable.Core.JsInterop
-open Common.UI
 importSideEffects "./sass/main.sass"
 
 [<ReactComponent>]

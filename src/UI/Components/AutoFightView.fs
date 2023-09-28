@@ -7,7 +7,6 @@ open Domain
 open Domain.CombatRules
 open Domain.Random
 open Domain.Random.Parser
-open Common.UI
 open Feliz.UseListener
 open UI.Components.AutoFight
 
