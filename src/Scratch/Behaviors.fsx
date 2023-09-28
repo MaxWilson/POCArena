@@ -7,7 +7,7 @@ type 't Feedback = Success of 't | Failure of 't
 type ExecutionResult<'actionOut, 'feedback, 'ctx> = Finished of 'feedback Feedback | Yield | AwaitingAction of 'actionOut * Behavior<'actionOut, 'feedback, 'ctx>
 and Behavior<'actionOut, 'feedback, 'ctx> = 'feedback Feedback  * 'ctx -> ExecutionResult<'actionOut, 'feedback, 'ctx>
 type ReturnAction<'actionOut> = ReturnAction of 'actionOut
-type QueryRequest<'memory, 'ctx, 'result> = QueryRequest of ('memory * 'ctx -> 'result)
+type QueryRequest<'ctx, 'result> = QueryRequest of ('ctx -> 'result)
 let run (bhv: Behavior<_,_,_>) (feedback, ctx) = bhv(feedback, ctx)
 let bind (lhs: Behavior<'action, 'memory, 'context>) (binder: _ -> Behavior<'action,_,'context>) : Behavior<'action, _, 'context> =
     fun (feedback, ctx) ->
@@ -37,11 +37,11 @@ type BehaviorBuilder() =
             *)
             // previously, // we discard the action/memory/context here, but we might have used them previously via QueryRequest to construct the action we're requesting
             AwaitingAction(action, run followupBehavior)
-    // member this.Bind(b: QueryRequest<_,_,'result>, f: 'result -> Behavior<_,_,_>) =
-    //     fun(a, m, c) ->
-    //         let (QueryRequest qf) = b
-    //         let r = qf(m,c)
-    //         (f r)(a,m,c)
+    member this.Bind(b: QueryRequest<_,'result>, binder: 'result -> Behavior<_,_,_>) =
+        fun(feedback, ctx) ->
+            let (QueryRequest qf) = b
+            let r = qf ctx
+            (binder r)(feedback, ctx)
     // member this.Delay f = f
     // member this.Delay(f): Behavior<_,_,_> = fun(action, memory, context) -> f()(action, memory, context)
     // member this.Zero() = fun _ -> None
@@ -61,10 +61,10 @@ type AttackMemory = {
     }
     with static member fresh = { target = None }
 
-let trivial: Behavior<_,_,_> = behavior {
+let trivial(): Behavior<_,_,_> = behavior {
     return Failure()
     }
-let trivial0 =
+let trivial0() =
     let b = behavior
     let x = b.Return(Failure())
     x
@@ -86,8 +86,8 @@ let almosttrivial(): Behavior<_,_,_> = behavior {
 let almosttrivial2(): Behavior<_,_,_> =
     let b = behavior
     let bind(ReturnAction(action, mem), bhv: (_ Feedback * 'context -> ExecutionResult<_,_,_>)) =
-        fun (action, mem', ctx) -> AwaitingAction(action, bhv)
-    bind(ReturnAction(attack "Bob", notImpl()), fun (result, ctx) -> b.Return Failure()) // is this the root of the problem here? If result/mem/ctx were already on b.Return Failure it would be perfect. bind(..., b.Return Failure) would work.
+        fun (action, ctx) -> AwaitingAction(action, bhv)
+    bind(ReturnAction(attack "Bob", notImpl()), b.Return (Failure())) // is this the root of the problem here? If result/mem/ctx were already on b.Return Failure it would be perfect. bind(..., b.Return Failure) would work.
     // if we take a cue from the state monad, https://dev.to/shimmer/the-state-monad-in-f-3ik0,
     // we should be accepting a binder as rhs and not a behavior directly:
     (*
@@ -99,12 +99,12 @@ let almosttrivial2(): Behavior<_,_,_> =
         *)
     // notice how the pattern is Wrap(run ==> binder ==> run), and the "let" binding is occuring in binder. What's the equivalent for behavior?
 
-let quasitrivial = behavior {
+let quasitrivial() = behavior {
     let! (result: _ Feedback, ctx: Context) = ReturnAction(attack "Bob", notImpl())
     let! (result: _ Feedback, ctx: Context) = ReturnAction(attack "Bob", notImpl())
     return Failure()
     }
-let quasitrivial1 =
+let quasitrivial1() =
     let b = behavior
     b.Bind(
         ReturnAction(attack "Bob", notImpl()),
@@ -116,38 +116,38 @@ let quasitrivial1 =
                 )
             )
 
-let rec kill(): Behavior<_,_,_> = behavior {
-    let! target = QueryRequest <| fun (ctx: Context) -> mem.target |> Option.orElseWith (fun () -> ctx.enemyHP |> Map.tryPick (fun name hp -> if hp > 0 then Some name else None))
+let rec kill(target): Behavior<_,_,_> = behavior {
+    let! target = QueryRequest <| fun (ctx: Context) -> target |> Option.orElseWith (fun () -> ctx.enemyHP |> Map.tryPick (fun name hp -> if hp > 0 then Some name else None))
     match target with
-    | None -> return Success
+    | None -> return Success()
     | Some target ->
         let mem = notImpl "attacking target"
-        let! (result: ActionResult, mem: Memory, ctx: Context) = ActionRequest(attack target, mem)
-        return Failure
-        // let inflictedInjury result ctx = notImpl "detect whether the attack inflicted injury--more than just a simple success/failure check"
-        // if result = Success && inflictedInjury result ctx then
-        //     // keep attacking
-        //     return! kill() // kill ctx // how to keep the state? Is recursion even the right way to continue here?
-        // else return Failure // todo: try attacking a different target first
+        let! (result: _ Feedback, ctx: Context) = ReturnAction(attack target, mem)
+        let inflictedInjury result ctx = notImpl "detect whether the attack inflicted injury--more than just a simple success/failure check"
+        if result = Success() && inflictedInjury result ctx then
+            // keep attacking
+            return! kill(Some target) // kill ctx // how to keep the state? Is recursion even the right way to continue here?
+        else return Failure() // todo: try attacking a different target first
     }
 
-let kill2 =
+let rec kill2 =
     fun (a, m, c) ->
         let bind(x,y) = notImpl()
-        bind(Finished Success, fun target ->
+        bind(Finished (Success()), fun target ->
             match target with
-            | None -> Finished Success
+            | None -> Finished (Success())
             | Some target ->
                 let mem = notImpl "attacking target"
                 let q = ReturnAction(attack target)
                 let bhv: Behavior<_,_,_> = (fun (result, ctx) ->
                     let inflictedInjury result ctx = notImpl "detect whether the attack inflicted injury--more than just a simple success/failure check"
-                    if result = Success && inflictedInjury result ctx then
+                    if result = Success() && inflictedInjury result ctx then
                         // keep attacking
-                        trivial()(result, mem, ctx) // kill ctx // how to keep the state? Is recursion even the right way to continue here?
-                    else Finished Failure // todo: try attacking a different target first
+                        kill2 (notImpl()) // how to keep the state? Is recursion even the right way to continue here?
+                    else Finished (Failure()) // todo: try attacking a different target first
                     )
                 bind(q, bhv)
+            )
 
 
 (*
