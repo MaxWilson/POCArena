@@ -212,6 +212,148 @@ module Data =
         static member add (monster: Creature) (db: MonsterDatabase) =
             { catalog = Map.add monster.name monster db.catalog }
 
+    type Status = OK | Stunned | Prone | Unconscious | Dead | Berserk
+    type CombatantId = int * string
+    type HitSide = Left | Right
+    type HitLocation = Head | Torso | Arm of HitSide | Leg of HitSide | Hand of HitSide | Foot of HitSide | Vitals | Neck | Groin | Eye of HitSide | Skull
+    type Destination = Person of CombatantId | Place of int * int
+    type AttackDetails = {
+        // The difference between AttackDetails vs. Combatant is that AttackDetails is an "untrusted"
+        // request from the user--the user can request illegal levels of deceptive for example, or
+        // multiple Rapid Strikes. It's up to the GMing logic to verify rules compliance as part of
+        // action resolution.
+        target: CombatantId
+        rapidStrike: bool
+        location: HitLocation option
+        deceptiveLevels: int
+        }
+        with static member create(target) = { target = target; rapidStrike = false; location = None; deceptiveLevels = 0 }
+    type Action =
+        | Attack of AttackDetails
+        | Move of Destination
+    type Combatant = {
+        personalName: string
+        number: int
+        team: int
+        stats: Creature
+        injuryTaken: int
+        shockPenalty: int
+        statusMods: Status list
+        retreatUsed: CombatantId option
+        blockUsed: bool
+        parriesUsed: int
+        attacksUsed: int
+        rapidStrikeUsed: bool
+        }
+        with
+        member this.CurrentHP_ = this.stats.HP_ - this.injuryTaken
+        member this.Id : CombatantId = this.team, this.personalName
+        static member fresh (team, name, number, stats: Creature) =
+            {   team = team
+                personalName = name
+                number = number
+                stats = stats
+                injuryTaken = 0
+                shockPenalty = 0
+                statusMods = if stats.Berserk = Some Always then [Berserk] else []
+                retreatUsed = None
+                blockUsed = false
+                parriesUsed = 0
+                attacksUsed = 0
+                rapidStrikeUsed = false
+                }
+        member this.is (status: Status) = this.statusMods |> List.exists ((=) status)
+        member this.isAny (statuses: Status list) = this.statusMods |> List.includes statuses
+        member this.isnt (status: Status) = this.is status |> not
+        member this.isnt (statuses: Status list) = this.isAny statuses |> not
+        static member newTurn (combatant: Combatant) =
+            { combatant
+                with
+                retreatUsed = None
+                blockUsed = false
+                parriesUsed = 0
+                attacksUsed = 0
+                rapidStrikeUsed = false
+                shockPenalty = 0
+                }
+
+    type Combat = {
+        combatants: Map<CombatantId, Combatant>
+        }
+    type Ids =
+        { attacker: CombatantId; target: CombatantId }
+        with
+        member this.Attacker_ = snd this.attacker
+        member this.AttackerTeam_ = fst this.attacker
+        member this.Target_ = snd this.target
+        member this.TargetTeam_ = fst this.target
+    type DefenseType = Parry | Block | Dodge
+    type DefenseDetails = { defense: DefenseType; retreatFrom: CombatantId option }
+        with member this.targetRetreated = this.retreatFrom.IsSome
+
+    [<AutoOpen>]
+    module CombatEvents =
+        type Event =
+            | Hit of Ids * DefenseDetails option * injury:int * Status list * string
+            | SuccessfulDefense of Ids * DefenseDetails * string
+            | Miss of Ids * string
+            | FallUnconscious of CombatantId * string
+            | Unstun of CombatantId * string
+            | StandUp of CombatantId * string
+            | Info of CombatantId * msg: string * rollInfo: string
+            | NewRound of int
+        let update msg model =
+            let updateCombatant id (f: Combatant -> Combatant) model =
+                {   combatants = model.combatants |> Map.change id (function | Some c -> Some (f c) | None -> None)
+                    }
+            let consumeDefense (id: CombatantId) (defense: DefenseDetails option) =
+                updateCombatant id (fun c ->
+                    match defense with
+                    | Some defense ->
+                        { c with
+                            retreatUsed = c.retreatUsed |> Option.orElse defense.retreatFrom
+                            blockUsed = c.blockUsed || defense.defense = Block
+                            parriesUsed = c.parriesUsed + (if defense.defense = Parry then 1 else 0)
+                            }
+                    | None -> c)
+            let newTurn (id: CombatantId) =
+                updateCombatant id Combatant.newTurn
+            let takeDamage (id: CombatantId) amount conditions =
+                updateCombatant id (fun c ->
+                    let goingBerserk = conditions |> List.contains Berserk
+                    // if going berserk, make sure to remove Stunned from conditions
+                    let mods' = (c.statusMods @ conditions) |> List.distinct
+                    { c with
+                        injuryTaken = c.injuryTaken + amount
+                        shockPenalty =
+                            if c.stats.SupernaturalDurability || c.stats.HighPainThreshold || (mods' |> List.contains Berserk) then 0
+                            else (c.shockPenalty - (amount / (max 1 (c.stats.HP_ / 10)))) |> max -4
+                        statusMods = if goingBerserk then mods' |> List.filter ((<>) Stunned) else mods'
+                        })
+            match msg with
+            | Hit (ids, defense, injury, statusImpact, rollDetails) ->
+                model |> newTurn ids.attacker
+                    |> consumeDefense ids.target defense
+                    |> takeDamage ids.target injury statusImpact
+            | SuccessfulDefense(ids, defense, rollDetails) ->
+                model |> newTurn ids.attacker
+                    |> consumeDefense ids.target (Some defense)
+            | Miss (ids, rollDetails) ->
+                model |> newTurn ids.attacker
+            | FallUnconscious(id, rollDetails) ->
+                model |> newTurn id |> takeDamage id 0 [Unconscious]
+            | Unstun(id, rollDetails) ->
+                model |> newTurn id
+                    |> updateCombatant id (fun c ->
+                            { c with statusMods = c.statusMods |> List.filter ((<>) Stunned) })
+            | StandUp(id, rollDetails) ->
+                model |> newTurn id
+                    |> updateCombatant id (fun c ->
+                            { c with statusMods = c.statusMods |> List.filter ((<>) Prone) })
+            | Info (id, _, _) -> model |> newTurn id
+            | NewRound _ -> model
+    type CombatLog = (Event option * Combat) list
+
 #nowarn "40" // we're not planning on doing any unsafe things during initialization, like evaluating the functions that rely on the object we're busy constructing
 module Parser =
     open Packrat

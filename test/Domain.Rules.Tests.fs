@@ -2,6 +2,7 @@ module Domain.Rules.Tests
 open Expecto
 open Domain
 open Domain.Random
+open Domain.Behavior
 open Domain.CombatRules
 let verify = Swensen.Unquote.Assertions.test
 
