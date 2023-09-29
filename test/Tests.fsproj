@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <Compile Include="Packrat.Parsing.Tests.fs" />
+    <Compile Include="Domain.Behavior.Tests.fs" />
     <Compile Include="Domain.Rules.Tests.fs" />
     <Compile Include="Domain.Parse.Tests.fs" />
     <Compile Include="CQRSTests.fs" />

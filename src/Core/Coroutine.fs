@@ -1,11 +1,10 @@
 module Coroutine
 
-type ReturnAction<'actionOut> = ReturnAction of 'actionOut
-type QueryRequest<'ctx, 'result> = QueryRequest of ('ctx -> 'result)
-type YieldRequest = class end // Yield means "don't quit behavior but there's nothing more to do until context changes"
 type ExecutionResult<'actionOut, 'feedback, 'ctx, 'finalResult> = Finished of 'finalResult | AwaitingAction of 'actionOut * Behavior<'actionOut, 'feedback, 'ctx, 'finalResult>
 and Behavior<'actionOut, 'feedback, 'ctx, 'finalResult> = 'feedback * 'ctx -> ExecutionResult<'actionOut, 'feedback, 'ctx, 'finalResult>
 and RunChildRequest<'actionOut, 'feedback, 'ctx, 'finalResult> = RunChildRequest of Behavior<'actionOut, 'feedback, 'ctx, 'finalResult>
+type ReturnAction<'actionOut> = ReturnAction of 'actionOut
+type QueryRequest<'ctx, 'result> = QueryRequest of ('ctx -> 'result)
 let run logic (feedback, ctx) = logic(feedback, ctx)
 
 type BehaviorBuilder() =

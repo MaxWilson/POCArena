@@ -54,13 +54,15 @@ let justAttack : ActionBehavior = behavior {
     return! loop None
     }
 
-#nowarn "40" // we're not doing anything weird in the ctors here like calling arguments that are functions, or anything like that.
-let rec flee = behavior {
+// note: we're not doing nowarn 40 here because throwing a notImpl exception is kind of weird, and if justFlee were a recursive object instead
+// of a recursive function, we'd get a runtime exception because of that. In the long run that won't be a problem but for now the warning is relevant.
+let rec justFlee() : ActionBehavior = behavior {
     let pos = query(fun ctx -> notImpl "Combatant needs a position first before we can implement flee")
     let! feedback, ctx = ReturnAction(Move(notImpl pos))
-    return! flee // just move from now until the end of time
+    return! justFlee() // just move from now until the end of time
     }
-let cowardly bhv : ActionBehavior = behavior {
+
+let cowardly bhv flee : ActionBehavior = behavior {
     let rec loop bhv flee = behavior {
         let! quit = query(fun ctx ->
             let me = ctx.me_
