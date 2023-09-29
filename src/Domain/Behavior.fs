@@ -64,16 +64,15 @@ let rec justFlee() : ActionBehavior = behavior {
 
 let cowardly bhv flee : ActionBehavior = behavior {
     let rec loop bhv flee = behavior {
-        let! quit = query(fun ctx ->
-            let me = ctx.me_
-            me.CurrentHP_ <= me.stats.HP_ / 3
-            )
+        let! brave = query(fun ctx -> let me = ctx.me_ in me.CurrentHP_ > me.stats.HP_ / 3)
 
-        let! result = RunChildRequest (if quit then bhv else flee)
+        let! result = RunChildRequest (if brave then bhv else flee)
         match result with
         | Finished result -> return result
-        | AwaitingAction(action, continuation) ->
-            return! if quit then loop bhv continuation else loop continuation flee // we track state for both bhv and flee separately,
+        | AwaitingAction(action, followup) ->
+            // update whichever behavior we used
+            let bhv, flee = if brave then followup, flee else bhv, followup
+            return! loop bhv flee // we track state for both bhv and flee separately,
             // so we can un-flee if we get healed. Otherwise we would just return! flee and permanently go into flee mode.
         }
     return! loop bhv flee
