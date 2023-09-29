@@ -3,9 +3,10 @@ module Coroutine
 type 't Feedback = Success of 't | Failure of 't
 type ReturnAction<'actionOut> = ReturnAction of 'actionOut
 type QueryRequest<'ctx, 'result> = QueryRequest of ('ctx -> 'result)
-type ExecutionResult<'actionOut, 'feedback, 'ctx> = Finished of 'feedback Feedback | Yield | AwaitingAction of 'actionOut * Behavior<'actionOut, 'feedback, 'ctx>
+type YieldRequest = class end // Yield means "don't quit behavior but there's nothing more to do until context changes"
+type ExecutionResult<'actionOut, 'feedback, 'ctx> = Finished of 'feedback Feedback | Yield of ('ctx -> ExecutionResult<'actionOut, 'feedback, 'ctx>) | AwaitingAction of 'actionOut * Behavior<'actionOut, 'feedback, 'ctx>
 and Behavior<'actionOut, 'feedback, 'ctx> = 'feedback Feedback  * 'ctx -> ExecutionResult<'actionOut, 'feedback, 'ctx>
-
+and RunChildRequest = RunChildRequest of Behavior<_,_,_>
 let run logic (feedback, ctx) = logic(feedback, ctx)
 // let bind (lhs: Coroutine<'action, 'memory, 'context>) (binder: _ -> Coroutine<'action,_,'context>) : Coroutine<'action, _, 'context> =
 //     fun (feedback, ctx) ->
@@ -36,11 +37,20 @@ type BehaviorBuilder() =
             *)
             // previously, // we discard the action/memory/context here, but we might have used them previously via QueryRequest to construct the action we're requesting
             AwaitingAction(action, run followupRoutine)
-    member this.Bind(b: QueryRequest<_,'result>, binder: 'result -> Behavior<_,_,_>) =
+    member this.Bind(q: QueryRequest<_,'result>, binder: 'result -> Behavior<_,_,_>) =
         fun(feedback, ctx) ->
-            let (QueryRequest qf) = b
+            let (QueryRequest qf) = q
             let r = qf ctx
             run (binder r) (feedback, ctx)
+    member this.Bind(RunChildRequest(lhs: Behavior<_,_,_>), binder: ExecutionResult<_,_,_> -> Behavior<_,_,_>) =
+        fun(feedback, ctx) ->
+            let r = run lhs (feedback, ctx)
+            binder r // we DON'T want to process the output before "returning" it back to the computation expression, because it might want to short circuit at a higher level, e.g. for cowardly
+    member this.Bind(YieldRequest, binder: 'ctx -> Behavior<'action,'feedback,'ctx>) =
+        fun(feedback, ctx) ->
+            let r = binder() // this feels wrong. The first ctx received should go to binder, and only the second ctx should go to r.
+                // but how to express that in a behavior? Does Yield even NEED to exist as a coroutine concept? Can't we just have a null action called Yield?
+            Yield(run r (feedback, ctx)
     // we might not ever need this next guy
     // member this.Bind(lhs: Coroutine<_,_,_>, binder: _ -> Coroutine<_,_,_>) =
         // fun (feedback, ctx) ->

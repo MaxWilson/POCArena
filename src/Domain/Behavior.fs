@@ -68,7 +68,7 @@ let cowardly behavior' : ActionBehavior = behavior {
             )
         if quit then return! flee // no longer loop, just flee
         else
-            let result = run bhv'
+            let! result = RunChildRequest bhv'
             match result with
             | Yield | Finished _ -> return result
             | AwaitingAction(action, bhv'') -> return AwaitingAction(action, loop bhv'')
