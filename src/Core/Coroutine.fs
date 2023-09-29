@@ -38,5 +38,28 @@ type BehaviorBuilder() =
     member this.Bind(RunChildRequest(lhs: Behavior<_,_,_,_>), binder: ExecutionResult<_,_,_,_> -> Behavior<_,_,_,_>): Behavior<_,_,_,_> =
         fun(feedback, ctx) ->
             let r: ExecutionResult<_,_,_,_> = run lhs (feedback, ctx)
-            binder r // we DON'T want to process the output before "returning" it back to the computation expression, because it might want to short circuit at a higher level, e.g. for cowardly
+            match r with
+            | AwaitingAction(action, _) ->
+                AwaitingAction(action, binder r) // See below, but this is effectively Action: Attack(followup: cowardly justAttack)
+            | Finished result ->
+                binder r (feedback, ctx) // yes, we're re-using the feedback. That might be a mistake.
+    (*
+        Okay, let's think through this scenario from the perspective of the behavior which is USING the child behavior.
+
+        ignoredFeedback, ctx1
+            parent behavior: Cowardly
+                child behavior: justAttack
+                    Action: Attack(followup: justAttack)
+            Action: Attack(followup: cowardly justAttack)
+        Attack feedback, ctx2
+            parent behavior: Cowardly
+                child behavior: justAttack
+                    Action: Attack(followup: justAttack)
+            Action: Attack(followup: cowardly justAttack)
+        Attack feedback, ctx3
+            parent behavior
+                child behavior: flee
+                    Action: Move
+
+    *)
 let behavior = BehaviorBuilder()

@@ -60,19 +60,19 @@ let rec flee = behavior {
     let! feedback, ctx = ReturnAction(Move(notImpl pos))
     return! flee // just move from now until the end of time
     }
-let cowardly behavior' : ActionBehavior = behavior {
-    let rec loop bhv' = behavior {
+let cowardly bhv : ActionBehavior = behavior {
+    let rec loop bhv flee = behavior {
         let! quit = query(fun ctx ->
             let me = ctx.me_
             me.CurrentHP_ <= me.stats.HP_ / 3
             )
-        if quit then return! flee // no longer loop, just flee
-        else
-            let! result = RunChildRequest bhv'
-            match result with
-            | Finished result -> return result
-            | AwaitingAction(action, bhv'') ->
-                return! loop bhv''
+
+        let! result = RunChildRequest (if quit then bhv else flee)
+        match result with
+        | Finished result -> return result
+        | AwaitingAction(action, continuation) ->
+            return! if quit then loop bhv continuation else loop continuation flee // we track state for both bhv and flee separately,
+            // so we can un-flee if we get healed. Otherwise we would just return! flee and permanently go into flee mode.
         }
-    return! loop behavior'
+    return! loop bhv flee
     }
