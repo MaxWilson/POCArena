@@ -231,6 +231,7 @@ module Data =
     type Action =
         | Attack of AttackDetails
         | Move of Destination
+        | Yield // end turn, wait for things to change
     type Combatant = {
         personalName: string
         number: int

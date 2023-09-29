@@ -70,8 +70,9 @@ let cowardly behavior' : ActionBehavior = behavior {
         else
             let! result = RunChildRequest bhv'
             match result with
-            | Yield | Finished _ -> return result
-            | AwaitingAction(action, bhv'') -> return AwaitingAction(action, loop bhv'')
+            | Finished result -> return result
+            | AwaitingAction(action, bhv'') ->
+                return! loop bhv''
         }
     return! loop behavior'
     }
