@@ -1,19 +1,18 @@
 module Coroutine
 
-type 't Feedback = Success of 't | Failure of 't
 type ReturnAction<'actionOut> = ReturnAction of 'actionOut
 type QueryRequest<'ctx, 'result> = QueryRequest of ('ctx -> 'result)
 type YieldRequest = class end // Yield means "don't quit behavior but there's nothing more to do until context changes"
-type ExecutionResult<'actionOut, 'feedback, 'ctx> = Finished of 'feedback Feedback | AwaitingAction of 'actionOut * Behavior<'actionOut, 'feedback, 'ctx>
-and Behavior<'actionOut, 'feedback, 'ctx> = 'feedback Feedback  * 'ctx -> ExecutionResult<'actionOut, 'feedback, 'ctx>
-and RunChildRequest<'actionOut, 'feedback, 'ctx> = RunChildRequest of Behavior<'actionOut, 'feedback, 'ctx>
+type ExecutionResult<'actionOut, 'feedback, 'ctx, 'finalResult> = Finished of 'finalResult | AwaitingAction of 'actionOut * Behavior<'actionOut, 'feedback, 'ctx, 'finalResult>
+and Behavior<'actionOut, 'feedback, 'ctx, 'finalResult> = 'feedback * 'ctx -> ExecutionResult<'actionOut, 'feedback, 'ctx, 'finalResult>
+and RunChildRequest<'actionOut, 'feedback, 'ctx, 'finalResult> = RunChildRequest of Behavior<'actionOut, 'feedback, 'ctx, 'finalResult>
 let run logic (feedback, ctx) = logic(feedback, ctx)
 
 type BehaviorBuilder() =
-    member this.Return (x: 't Feedback) : Behavior<_,_,_> = fun (feedback, ctx) -> Finished x
-    member this.ReturnFrom (x: Behavior<_,_,_>) = x
+    member this.Return (x: 't) : Behavior<_,_,_,_> = fun (feedback, ctx) -> Finished x
+    member this.ReturnFrom (x: Behavior<_,_,_,_>) = x
     // member this.Bind(b, f) = bind b f
-    member this.Bind(ReturnAction(action), binder: _ -> Behavior<_,_,_>): Behavior<_,_,_> =
+    member this.Bind(ReturnAction(action), binder: _ -> Behavior<_,_,_,_>): Behavior<_,_,_,_> =
         fun (feedback, context) ->
             let followupRoutine = binder (feedback, context)
             (* consider a block of behavior that looks like this:
@@ -31,13 +30,13 @@ type BehaviorBuilder() =
             *)
             // previously, // we discard the action/memory/context here, but we might have used them previously via QueryRequest to construct the action we're requesting
             AwaitingAction(action, run followupRoutine)
-    member this.Bind(q: QueryRequest<_,'result>, binder: 'result -> Behavior<_,_,_>) =
+    member this.Bind(q: QueryRequest<_,'result>, binder: 'result -> Behavior<_,_,_,_>) =
         fun(feedback, ctx) ->
             let (QueryRequest qf) = q
             let r = qf ctx
             run (binder r) (feedback, ctx)
-    member this.Bind(RunChildRequest(lhs: Behavior<_,_,_>), binder: ExecutionResult<_,_,_> -> Behavior<_,_,_>): Behavior<_,_,_> =
+    member this.Bind(RunChildRequest(lhs: Behavior<_,_,_,_>), binder: ExecutionResult<_,_,_,_> -> Behavior<_,_,_,_>): Behavior<_,_,_,_> =
         fun(feedback, ctx) ->
-            let r: ExecutionResult<_,_,_> = run lhs (feedback, ctx)
+            let r: ExecutionResult<_,_,_,_> = run lhs (feedback, ctx)
             binder r // we DON'T want to process the output before "returning" it back to the computation expression, because it might want to short circuit at a higher level, e.g. for cowardly
 let behavior = BehaviorBuilder()
