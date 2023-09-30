@@ -94,15 +94,18 @@ img, picture, svg, video
         flex-direction: row
         flex-wrap: wrap
         gap: 10px
-    .calibrationRange
-        input
-            padding: 2px
-            box-sizing: content-box
-            max-width: 3em
-            margin-left: 3px
-            margin-right: 3px
-        button
-            margin-left: 3px
+        .specificQuantity, .calibrated
+            width: max(18rem, 45vw) // don't shrink too much even on small screens
+        .calibrated
+            .calibrationRange
+                input
+                    padding: 2px
+                    box-sizing: content-box
+                    max-width: 3em
+                    margin-left: 3px
+                    margin-right: 3px
+                button
+                    margin-left: 3px
     .combat
         display: grid
         grid-template-columns: auto 1fr
