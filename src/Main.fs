@@ -20,7 +20,7 @@ let Arena() =
         model = state
         dispatch = dispatch
         }
-    DefaultFrame frameArgs (Arena (init, state.history))
+    DefaultFrame frameArgs (Arena0 (init, state.history))
 
 [<ReactComponent>]
 let Router() =

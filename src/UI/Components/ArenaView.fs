@@ -7,6 +7,40 @@ open Feliz.UseElmish
 open Elmish
 open UI.Components.Arena
 
+module private Setup =
+    open type Stage
+    open type Layer
+    open type Circle
+    [<ReactComponent>]
+    let View dispatch =
+        stage [
+            Stage.height 200
+            Stage.width 300
+            Stage.children [
+                layer [
+                    Rect.create [
+                        Rect.x 0
+                        Rect.y 0
+                        Rect.fill Color.LightGrey
+                        Rect.width winW
+                        Rect.height winH
+                        Rect.key "Rect1"
+                        ]
+                    ]
+                layer [
+                    circle [
+                        Circle.x 50
+                        Circle.y 45
+                        Circle.radius 25
+                        Circle.fill Color.Red
+                        Circle.offsetX -25
+                        Circle.offsetY -25
+                        ]
+                    ]
+                ]
+            ]
+let Arena = Setup.View
+
 module private Impl =
     open Fable.Core.JsInterop
     let r = System.Random()
@@ -69,8 +103,9 @@ let DefaultFrame (args: FrameInputs) stage =
         ]
 
 
+// Arena0 probably won't wind up being used. Consider it a proof of concept.
 [<ReactComponent>]
-let Arena (init, history': Msg list) =
+let Arena0 (init, history': Msg list) =
     // start with initialModel, then movements flow in through history' to executionQueue and eventually to canon
     let canon, setCanon = React.useState init
     let futureCanon, setFutureCanon = React.useState init
@@ -124,12 +159,12 @@ let Arena (init, history': Msg list) =
         let startPump = executionQueue.current.IsEmpty
         executionQueue.current <- executionQueue.current @ todo
         if startPump then pump currentTransition
-    stage [
+    Stage.create [
         Stage.width stageW // TODO: there's gotta be a better way to be responsive to mobile size constraints
         Stage.height stageH
         Stage.children [
-            Layer.create "background" [
-                rect [
+            Layer.createNamed "background" [
+                Rect.create [
                     Rect.x 0
                     Rect.y 0
                     Rect.fill Color.LightGrey
@@ -138,12 +173,12 @@ let Arena (init, history': Msg list) =
                     Rect.key "Rect1"
                     ]
                 ]
-            Layer.create "arena" [
+            Layer.createNamed "arena" [
                 for creature in canon.creatures.Values do
-                    group [
+                    Group.create [
                         match currentTransition with
                         | Transitioning(Tween { id = id; from = (x,y) }) when id = creature.id ->
-                            Group.x x
+                            (Group.x x: IGroupProperty)
                             Group.y y
                             Group.ref (fun node -> movingObject.current <- Some node)
                         | _ ->
@@ -151,14 +186,14 @@ let Arena (init, history': Msg list) =
                             Group.y creature.y
                         Group.key (toString creature.id)
                         Group.children [
-                            circle [
+                            Circle.create [
                                 Circle.radius 25
                                 Circle.fill Color.Red
                                 Circle.key "circle"
                                 Circle.offsetX -25
                                 Circle.offsetY -25
                                 ]
-                            text [
+                            Text.create [
                                 Text.verticalAlign Middle
                                 Text.align Center
                                 Text.fill Color.Black
@@ -174,4 +209,5 @@ let Arena (init, history': Msg list) =
                 ]
             ]
         ]
+
 

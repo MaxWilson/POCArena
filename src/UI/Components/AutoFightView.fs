@@ -519,6 +519,7 @@ let View (model: Model) dispatch =
                                     ]
                             ]
                         ]
+                    ArenaView.Arena dispatch
                     ExecuteButton model dispatch
                     match model.execution with
                     | NotStarted | InProgress -> ()
