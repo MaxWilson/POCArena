@@ -34,8 +34,8 @@ let Router() =
                         if selected = link then
                             classP' "internalLink" Html.b [ prop.children [Html.text link] ]
                         elif (["Adventure"; "Campaign"] |> List.contains link) then // we want to give an early warning BEFORE changing the URL
-                            classP' "internalLink" Html.a [prop.href ("#" + dest); prop.children [Html.text link]; prop.onClick (fun ev -> ev.preventDefault(); notImpl $"{link} mode" )]
-                        else classP' "internalLink" Html.a [prop.href ("#" + dest); prop.children [Html.text link] ]
+                            classP' "internalLink" Html.a [prop.href ("#" + dest); prop.children [Html.text link]; prop.custom("data-text", link); prop.onClick (fun ev -> ev.preventDefault(); notImpl $"{link} mode" )]
+                        else classP' "internalLink" Html.a [prop.href ("#" + dest); prop.children [Html.text link]; prop.custom("data-text", link) ]
                     classP' "srcLink" Html.a [
                         prop.href "https://github.com/MaxWilson/POCArena/"
                         prop.children [Html.img [prop.src "img/GitHub_Logo.png"]]

@@ -22,6 +22,22 @@ img, picture, svg, video
 .header
     .internalLink
         margin: auto 5px
+        // prevent bold items from growing by preemptively giving them an invisible bold twin already
+        display: inline-flex
+        flex-direction: column
+        align-items: center
+        justify-content: space-between
+    .internalLink::after // prevent bold items from growing by preemptively giving them an invisible bold twin already
+        content: attr(data-text)
+        content: attr(data-text) / ""
+        overflow: hidden
+        height: 0
+        visibility: hidden
+        user-select: none
+        pointer-events: none
+        font-weight: bold
+        @media speech
+            display: none
     .srcLink
         max-width: 6em
         float: right
