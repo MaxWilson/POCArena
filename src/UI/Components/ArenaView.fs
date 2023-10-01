@@ -32,6 +32,7 @@ module private Setup =
                     for team, groups in teams do
                         let x,y = teamPositions[team]
                         group [
+                            Group.draggable
                             Group.x x
                             Group.y y
                             Group.key $"Group{team}"
