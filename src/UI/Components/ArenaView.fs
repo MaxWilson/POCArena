@@ -17,7 +17,7 @@ module private Setup =
             Stage.height 200
             Stage.width 300
             Stage.children [
-                layer [
+                Layer.createNamed "background" [
                     Rect.create [
                         Rect.x 0
                         Rect.y 0
@@ -27,19 +27,21 @@ module private Setup =
                         Rect.key "Rect1"
                         ]
                     ]
-                layer [
+                Layer.createNamed "teams" [
                     let teamPositions = [1, (50, 45); 2, (250, 115)] |> Map.ofList
                     for team, groups in teams do
                         let x,y = teamPositions[team]
                         group [
                             Group.x x
                             Group.y y
+                            Group.key $"Group{team}"
                             // Group.offsetX -25
                             // Group.offsetY -25
-                            Group.children [
+                            Group.children [|
                                 circle [
                                     Circle.radius 40
                                     Circle.fill Color.Red
+                                    Circle.key "circle"
                                     // Circle.offsetX -25
                                     // Circle.offsetY -25
                                     ]
@@ -53,6 +55,7 @@ module private Setup =
                                     Text.offsetY 25
                                     Text.fontSize 9
                                     Text.fontStyle "800" // unusually bold
+                                    Text.key "name"
                                     let txt =
                                         [   for n, monsterName in groups do
                                                 let c = db.catalog[monsterName] in if n = 1 then c.name else c.PluralName_
@@ -61,7 +64,7 @@ module private Setup =
 
                                     Text.text (txt)
                                     ]
-                                ]
+                                |]
 
                             ]
                     ]
