@@ -117,6 +117,7 @@ module Data =
               }
         // "_" means "defaulted" in the sense that it's the value that will be used if the property is not set.
         member this.PluralName_ = defaultArg this.pluralName (this.name + "s")
+        member this.Quantify (n: int) = if n = 1 then this.name else $"{n} {this.PluralName_}"
         member this.ST_ = defaultArg this.ST 10
         member this.DX_ = defaultArg this.DX 10
         member this.IQ_ = defaultArg this.IQ 10

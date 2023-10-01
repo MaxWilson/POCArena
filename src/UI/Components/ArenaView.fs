@@ -12,7 +12,7 @@ module private Setup =
     open type Layer
     open type Circle
     [<ReactComponent>]
-    let View dispatch =
+    let View (db: Domain.Data.MonsterDatabase) (teams: (int * ((int * string) list)) list) dispatch =
         stage [
             Stage.height 200
             Stage.width 300
@@ -28,18 +28,46 @@ module private Setup =
                         ]
                     ]
                 layer [
-                    circle [
-                        Circle.x 50
-                        Circle.y 45
-                        Circle.radius 25
-                        Circle.fill Color.Red
-                        Circle.offsetX -25
-                        Circle.offsetY -25
-                        ]
+                    let teamPositions = [1, (50, 45); 2, (250, 115)] |> Map.ofList
+                    for team, groups in teams do
+                        let x,y = teamPositions[team]
+                        group [
+                            Group.x x
+                            Group.y y
+                            // Group.offsetX -25
+                            // Group.offsetY -25
+                            Group.children [
+                                circle [
+                                    Circle.radius 40
+                                    Circle.fill Color.Red
+                                    // Circle.offsetX -25
+                                    // Circle.offsetY -25
+                                    ]
+                                text [
+                                    Text.verticalAlign Middle
+                                    Text.align Center
+                                    Text.fill Color.Black
+                                    Text.width 80
+                                    Text.height 50
+                                    Text.offsetX 40
+                                    Text.offsetY 25
+                                    Text.fontSize 9
+                                    Text.fontStyle "800" // unusually bold
+                                    let txt =
+                                        [   for n, monsterName in groups do
+                                                let c = db.catalog[monsterName] in if n = 1 then c.name else c.PluralName_
+                                            ]
+                                        |> String.join ", "
+
+                                    Text.text (txt)
+                                    ]
+                                ]
+
+                            ]
                     ]
                 ]
             ]
-let Arena = Setup.View
+let Setup = Setup.View
 
 module private Impl =
     open Fable.Core.JsInterop

@@ -65,6 +65,8 @@ type Shape =
     static member inline y (y:int) = mkShapeAttr "y" y
     static member inline x (x:float) = mkShapeAttr "x" x
     static member inline y (y:float) = mkShapeAttr "y" y
+    static member inline pos ((x: int, y:int)) = [Shape.x x; Shape.y y]
+    static member inline pos ((x: float, y:float)) = [Shape.x x; Shape.y y]
     static member inline opacity (v:float) = mkShapeAttr "opacity" v
     static member inline fill (color:Color) = mkShapeAttr "fill" color
     static member inline fill (color:string) = mkShapeAttr "fill" color
@@ -104,6 +106,7 @@ type Text =
     inherit Shape
     static member inline text (text: string) = mkTextAttr "text" text
     static member inline fontSize (fontSize: int) = mkTextAttr "fontSize" fontSize
+    static member inline fontStyle (fontStyle: string) = mkTextAttr "fontStyle" fontStyle
     static member inline align (v: HorizontalAlign) = mkTextAttr "align" v
     static member inline verticalAlign (v: VerticalAlign) = mkTextAttr "verticalAlign" v
     static member inline create props = text (props |> Array.ofList)
@@ -136,7 +139,7 @@ type KonvaNode =
 
 let stage = Stage.create
 let layer = Layer.create
-let inline group (children: #ReactElement list) = Group.create children
+let inline group (children: IGroupProperty list) = Group.create children
 let circle = Circle.create
 let rect = Rect.create
 let text = Text.create
