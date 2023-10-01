@@ -218,6 +218,7 @@ let ViewCombat (setup, combatLog: CombatLog) dispatch =
     let combat, setCombat = React.useState (combatLog |> List.last |> snd)
     let currentIndex, setCurrentIndex = React.useState 0
     class' "combat" Html.div [
+        class' "visuals" Html.div [ArenaView.Actual dispatch]
         class' "statusTable" Html.div [
             Html.table [
                 Html.thead [
@@ -518,13 +519,13 @@ let View (model: Model) dispatch =
                                     | None -> Html.div "No creatures selected"
                                     ]
                             ]
+                        let sides =
+                            match model.fightSetup.sideB with
+                            | Calibrate(Some name, _, _, _) -> [1, model.fightSetup.sideA; 2, [99, name]]
+                            | Specific(monsters) -> [1, model.fightSetup.sideA; 2, monsters]
+                            | _ -> [1, model.fightSetup.sideA]
+                        ArenaView.Setup model.database sides dispatch
                         ]
-                    let sides =
-                        match model.fightSetup.sideB with
-                        | Calibrate(Some name, _, _, _) -> [1, model.fightSetup.sideA; 2, [99, name]]
-                        | Specific(monsters) -> [1, model.fightSetup.sideA; 2, monsters]
-                        | _ -> [1, model.fightSetup.sideA]
-                    ArenaView.Setup model.database sides dispatch
                     ExecuteButton model dispatch
                     match model.execution with
                     | NotStarted | InProgress -> ()

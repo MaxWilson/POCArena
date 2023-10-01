@@ -69,6 +69,29 @@ module private Setup =
             ]
 let Setup = Setup.View
 
+module Actual =
+
+    [<ReactComponent>]
+    let View dispatch =
+        stage [
+            Stage.height 200
+            Stage.width 300
+            Stage.children [
+                layer [
+                    Rect.create [
+                        Rect.x 0
+                        Rect.y 0
+                        Rect.fill Color.LightGrey
+                        Rect.width winW
+                        Rect.height winH
+                        Rect.key "Rect1"
+                        ]
+                    ]
+                ]
+            ]
+
+let Actual = Actual.View
+
 module private Impl =
     open Fable.Core.JsInterop
     let r = System.Random()

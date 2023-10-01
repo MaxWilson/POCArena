@@ -95,7 +95,7 @@ img, picture, svg, video
         flex-wrap: wrap
         gap: 10px
         .specificQuantity, .calibrated
-            width: max(18rem, 45vw) // don't shrink too much even on small screens
+            width: max(18rem, 25vw) // don't shrink too much even on small screens
         .calibrated
             .calibrationRange
                 input
@@ -109,10 +109,15 @@ img, picture, svg, video
     .combat
         display: grid
         grid-template-columns: auto 1fr
-        grid-template-areas: "statusTable logButtons" "statusTable logEntries"
+        grid-template-areas: "statusTable logButtons visuals" "statusTable logEntries visuals"
+        gap: 5px
+        .visuals
+            grid-area: visuals
+            padding: 5px
+            background-color: darkgray
         .statusTable
             grid-area: statusTable
-            max-height: 55vh
+            max-height: 45vh
             overflow-y: auto
             table
                 min-width: 25vw
@@ -128,7 +133,7 @@ img, picture, svg, video
                 left: 5px
         .logEntries
             grid-area: logEntries
-            max-height: calc(55vh - 30px)
+            max-height: calc(45vh - 30px) // ugh, how to make this responsive? And shorter; it is running off the page right now and it looks ugly.
             overflow-y: auto
             .details
                 margin-left: 8px
