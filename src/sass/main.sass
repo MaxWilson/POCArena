@@ -109,7 +109,9 @@ img, picture, svg, video
     .combat
         display: grid
         grid-template-columns: auto 1fr
-        grid-template-areas: "statusTable logButtons visuals" "statusTable logEntries visuals"
+        grid-template-areas: "statusTable logButtons" "statusTable logEntries" "visuals visuals"
+        @media (min-width: 800px)
+            grid-template-areas: "statusTable logButtons visuals" "statusTable logEntries visuals"
         gap: 5px
         .visuals
             grid-area: visuals
