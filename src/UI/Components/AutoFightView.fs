@@ -155,7 +155,7 @@ let EditView (name: string) (db: MonsterDatabase) dispatch =
     let editBerserkLevel = EditDropdown(SelfControlLevel.toDescription, (fun (input: string) -> [Mild; Moderate; Serious; Severe; Always] |> List.tryFind (fun lvl -> SelfControlLevel.toDescription lvl = input)))
     let editBool label (value: bool, update) = checkbox Html.div label (value, update)
     class' "editView" Html.div [
-        classP' ("textview" + if textError then " error" else "") Html.input [
+        classP' ("textview" + if textError then " error" else "") Html.textarea [
             prop.valueOrDefault textView
             prop.onChange (fun (input: string) ->
                 match Packrat.ParseArgs.Init input with
