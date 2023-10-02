@@ -78,8 +78,8 @@ type Shape =
     static member inline onMouseUp (f: ({| target: 'a |} -> 'b)) = mkShapeAttr "onMouseUp" f
     static member inline onMouseOver (f: ({| target: 'a |} -> 'b)) = mkShapeAttr "onMouseOver" f
     static member inline ref handle = mkShapeAttr "ref" handle
-    static member inline offsetX (v: int) = mkShapeAttr "offsetX" v
-    static member inline offsetY (v: int) = mkShapeAttr "offsetY" v
+    static member inline offsetX (v: float) = mkShapeAttr "offsetX" v
+    static member inline offsetY (v: float) = mkShapeAttr "offsetY" v
 
 type Circle =
     inherit Shape

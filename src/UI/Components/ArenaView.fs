@@ -6,22 +6,76 @@ open Feliz
 open Feliz.UseElmish
 open Elmish
 open UI.Components.Arena
+[<Measure>] type yard
 
-let private layoutGrid =
-    Layer.createNamed "Grid" [
-        for x in 0..39 do
-            for y in 0..39 do
-                Rect.create [
-                    Rect.x (x*10)
-                    Rect.y (y*10)
-                    Rect.stroke Color.Black
-                    Rect.strokeWidth 1
-                    Rect.opacity 0.3
-                    Rect.width 10
-                    Rect.height 10
-                    Rect.key "Rect{x}_{y}"
+[<AutoOpen>]
+module private Impl =
+    type RenderHelper(pixelWidth, pixelHeight) =
+        let _scaleX, _scaleY = (float pixelWidth / 40.<yard>), (float pixelHeight / 40.<yard>)
+        // hmmm, I guess we want to use the same scale for both X and Y don't we? Take the minimum and just let the other space go unused.
+        let _scaleX, _scaleY = let m = min _scaleX _scaleY in m, m
+        member _.scaleX (x: float<yard>) = x * _scaleX
+        member _.scaleY (y: float<yard>) = y * _scaleY
+        member _.rect name (x:float<yard>,y:float<yard>) props =
+            Rect.create ([
+                Rect.x (x * _scaleX)
+                Rect.y (y * _scaleY)
+                Rect.key name
+                ]
+                @props)
+        member _.circle name (x:float<yard>,y:float<yard>) props =
+            Circle.create ([
+                Circle.x (x * _scaleX)
+                Circle.y (y * _scaleY)
+                Circle.key name
+                ]
+                @props)
+        member _.text name (x:float<yard>,y:float<yard>) props =
+            Text.create ([
+                Text.x (x * _scaleX)
+                Text.y (y * _scaleY)
+                Text.key name
+                ]
+                @props)
+        member _.group name (x:float<yard>,y:float<yard>) (props: IGroupProperty list) =
+            Group.create (([
+                Group.x (x * _scaleX)
+                Group.y (y * _scaleY)
+                Group.key name
+                ] : IGroupProperty list)
+                @ props)
+    let toYard(x:int) = float x * 1.<yard>
+    let display (pixelSize: int * int) render =
+        printfn $"Display: {pixelSize}"
+        stage [
+            Stage.height (snd pixelSize)
+            Stage.width (fst pixelSize)
+            Stage.children [
+                Layer.createNamed "background" [
+                    Rect.create [
+                        Rect.x 0
+                        Rect.y 0
+                        Rect.fill Color.LightGrey
+                        Rect.width (fst pixelSize)
+                        Rect.height (snd pixelSize)
+                        Rect.key "Rect1"
+                        ]
                     ]
-        ]
+                yield! render (RenderHelper(pixelSize))
+                ]
+            ]
+    let layoutGrid (r: RenderHelper) =
+        Layer.createNamed "Grid" [
+            for x in [0..39] |> List.map toYard do
+                for y in [0..39] |> List.map toYard do
+                    r.rect $"Rect{x}_{y}" (x, y) [
+                        Rect.stroke Color.Black
+                        Rect.strokeWidth 1
+                        Rect.opacity 0.3
+                        Rect.width (r.scaleX 1.<yard>)
+                        Rect.height (r.scaleY 1.<yard>)
+                        ]
+            ]
 
 module private Setup =
     open type Stage
@@ -30,91 +84,72 @@ module private Setup =
 
     [<ReactComponent>]
     let View (db: Domain.Data.MonsterDatabase) (teams: (int * ((int * string) list)) list) dispatch =
-        stage [
-            Stage.height 200
-            Stage.width 300
-            Stage.children [
-                Layer.createNamed "background" [
-                    Rect.create [
-                        Rect.x 0
-                        Rect.y 0
-                        Rect.fill Color.LightGrey
-                        Rect.width winW
-                        Rect.height winH
-                        Rect.key "Rect1"
+        display (300, 300) <| fun r -> [
+            layoutGrid r
+            Layer.createNamed "teams" [
+                let teamPositions = [1, (8.<yard>, 20.<yard>); 2, (33.<yard>, 27.<yard>)] |> Map.ofList
+                for team, groups in teams do
+                    let x,y = teamPositions[team]
+                    r.group $"Group{team}" (x,y) [
+                        Group.draggable
+                        // Group.offsetX -25
+                        // Group.offsetY -25
+                        Group.children [|
+                            circle [
+                                Circle.radius (r.scaleX 3.<yard>)
+                                Circle.fill (if team = 1 then Color.Blue else Color.Red)
+                                Circle.key "circle"
+                                // Circle.offsetX -25
+                                // Circle.offsetY -25
+                                ]
+                            text [
+                                Text.verticalAlign Middle
+                                Text.align Center
+                                Text.fill Color.Black
+                                // do NOT scale text to yards
+                                Text.width (50)
+                                Text.height (50)
+                                Text.offsetX (25)
+                                Text.offsetY (25)
+                                Text.fontSize 9
+                                Text.fontStyle "800" // unusually bold
+                                Text.key "name"
+                                let txt =
+                                    [   for n, monsterName in groups do
+                                            let c = db.catalog[monsterName] in if n = 1 then c.name else c.PluralName_
+                                        ]
+                                    |> String.join ", "
+
+                                Text.text (txt)
+                                ]
+                            |]
+
                         ]
-                    ]
-                layoutGrid
-                Layer.createNamed "teams" [
-                    let teamPositions = [1, (50, 45); 2, (250, 115)] |> Map.ofList
-                    for team, groups in teams do
-                        let x,y = teamPositions[team]
-                        group [
-                            Group.draggable
-                            Group.x x
-                            Group.y y
-                            Group.key $"Group{team}"
-                            // Group.offsetX -25
-                            // Group.offsetY -25
-                            Group.children [|
-                                circle [
-                                    Circle.radius 40
-                                    Circle.fill (if team = 1 then Color.Blue else Color.Red)
-                                    Circle.key "circle"
-                                    // Circle.offsetX -25
-                                    // Circle.offsetY -25
-                                    ]
-                                text [
-                                    Text.verticalAlign Middle
-                                    Text.align Center
-                                    Text.fill Color.Black
-                                    Text.width 80
-                                    Text.height 50
-                                    Text.offsetX 40
-                                    Text.offsetY 25
-                                    Text.fontSize 9
-                                    Text.fontStyle "800" // unusually bold
-                                    Text.key "name"
-                                    let txt =
-                                        [   for n, monsterName in groups do
-                                                let c = db.catalog[monsterName] in if n = 1 then c.name else c.PluralName_
-                                            ]
-                                        |> String.join ", "
-
-                                    Text.text (txt)
-                                    ]
-                                |]
-
-                            ]
-                    ]
                 ]
             ]
+
 let Setup = Setup.View
 module Actual =
 
     [<ReactComponent>]
     let View dispatch =
-        stage [
-            Stage.height 200
-            Stage.width 300
-            Stage.children [
-                Layer.createNamed "Background" [
-                    Rect.create [
-                        Rect.x 0
-                        Rect.y 0
-                        Rect.fill Color.LightGrey
-                        Rect.width winW
-                        Rect.height winH
-                        Rect.key "Rect1"
-                        ]
+        display (300, 200) <| fun r -> [
+            Layer.createNamed "Background" [
+                Rect.create [
+                    Rect.x 0
+                    Rect.y 0
+                    Rect.fill Color.LightGrey
+                    Rect.width winW
+                    Rect.height winH
+                    Rect.key "Rect1"
                     ]
-                layoutGrid
                 ]
+            layoutGrid r
             ]
 
 let Actual = Actual.View
 
-module private Impl =
+module private Impl0 =
     open Fable.Core.JsInterop
     let r = System.Random()
     type Movespec = { id: UniqueId; from: int * int; unto: int * int; mutable started: bool; afterwards: unit -> unit }
@@ -136,7 +171,7 @@ module private Impl =
     type Todo =
         | Tween of Movespec
         | Immediate of (unit -> unit)
-open Impl
+open Impl0
 
 [<ReactComponent>]
 let DefaultFrame (args: FrameInputs) stage =
