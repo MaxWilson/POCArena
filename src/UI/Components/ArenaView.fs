@@ -5,8 +5,8 @@ open UI.Konva
 open Feliz
 open Feliz.UseElmish
 open Elmish
+open Domain.Data
 open UI.Components.Arena
-[<Measure>] type yard
 
 [<AutoOpen>]
 module private Impl =
@@ -83,13 +83,17 @@ module private Setup =
     open type Circle
 
     [<ReactComponent>]
-    let View (db: Domain.Data.MonsterDatabase) (teams: (int * ((int * string) list)) list) dispatch =
+    let View (db: Domain.Data.MonsterDatabase) (setup: AutoFight.FightSetup) dispatch =
         display (300, 300) <| fun r -> [
             layoutGrid r
             Layer.createNamed "teams" [
-                let teamPositions = [1, (8.<yard>, 20.<yard>); 2, (33.<yard>, 27.<yard>)] |> Map.ofList
+                let teams =
+                    match setup.sideB with
+                    | AutoFight.Calibrate(Some name, _, _, _) -> [1, setup.sideA; 2, [99, name]]
+                    | AutoFight.Specific(monsters) -> [1, setup.sideA; 2, monsters]
+                    | _ -> [1, setup.sideA]
                 for team, groups in teams do
-                    let x,y = teamPositions[team]
+                    let x,y = setup.teamPositions[team]
                     r.group $"Group{team}" (x,y) [
                         Group.draggable
                         // Group.offsetX -25

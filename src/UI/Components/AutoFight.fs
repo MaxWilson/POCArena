@@ -11,7 +11,9 @@ type Opposition =
 type FightSetup = {
     sideA: (int * string) list
     sideB: Opposition
+    teamPositions: Map<int, float<yard>*float<yard>>
     }
+    with static member fresh = { sideA = []; sideB = Calibrate(None, None, None, TPK); teamPositions = Map.empty }
 type 't Awaitable =
     | NotStarted
     | InProgress
@@ -79,6 +81,7 @@ let init () =
     let fight = {
         sideA = [3, "Peshkali"; 1, "Slugbeast"]
         sideB = Calibrate(Some "Orc", None, None, TPK)
+        teamPositions = [1, (8.<yard>, 20.<yard>); 2, (33.<yard>, 27.<yard>)] |> Map.ofList
         }
     { page = Home; fightSetup = fight; database = db; execution = NotStarted }
 

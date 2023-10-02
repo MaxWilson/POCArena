@@ -4,6 +4,7 @@ namespace Domain
 module Data =
     open Domain.Random
 
+    [<Measure>] type yard
     type 't prop = 't option
     type DamageType = Cutting | Impaling | Crushing | Piercing | Burning | Other
         with

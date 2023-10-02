@@ -1,6 +1,7 @@
 public/bundle.js*
 
 .*
+src/fable_modules
 
 # Node
 node_modules/
