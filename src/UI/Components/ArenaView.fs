@@ -7,10 +7,27 @@ open Feliz.UseElmish
 open Elmish
 open UI.Components.Arena
 
+let private layoutGrid =
+    Layer.createNamed "Grid" [
+        for x in 0..39 do
+            for y in 0..39 do
+                Rect.create [
+                    Rect.x (x*10)
+                    Rect.y (y*10)
+                    Rect.stroke Color.Black
+                    Rect.strokeWidth 1
+                    Rect.opacity 0.3
+                    Rect.width 10
+                    Rect.height 10
+                    Rect.key "Rect{x}_{y}"
+                    ]
+        ]
+
 module private Setup =
     open type Stage
     open type Layer
     open type Circle
+
     [<ReactComponent>]
     let View (db: Domain.Data.MonsterDatabase) (teams: (int * ((int * string) list)) list) dispatch =
         stage [
@@ -27,6 +44,7 @@ module private Setup =
                         Rect.key "Rect1"
                         ]
                     ]
+                layoutGrid
                 Layer.createNamed "teams" [
                     let teamPositions = [1, (50, 45); 2, (250, 115)] |> Map.ofList
                     for team, groups in teams do
@@ -72,7 +90,6 @@ module private Setup =
                 ]
             ]
 let Setup = Setup.View
-
 module Actual =
 
     [<ReactComponent>]
@@ -81,7 +98,7 @@ module Actual =
             Stage.height 200
             Stage.width 300
             Stage.children [
-                layer [
+                Layer.createNamed "Background" [
                     Rect.create [
                         Rect.x 0
                         Rect.y 0
@@ -91,6 +108,7 @@ module Actual =
                         Rect.key "Rect1"
                         ]
                     ]
+                layoutGrid
                 ]
             ]
 
