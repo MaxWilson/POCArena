@@ -312,7 +312,7 @@ let ViewCombat (setup, combatLog: CombatLog) dispatch =
                         | (1, name) -> classTxt' "blueName" Html.span name
                         | (2, name) -> classTxt' "redName" Html.span name
                         | _ -> shouldntHappen()
-                    let miss = Html.img [prop.ariaLabel "Miss"; prop.src "img/hollowsword_16x16.png"]
+                    let miss = Html.img [prop.ariaLabel "Miss"; prop.src "img/shield_16x16.png"] // reuse the "defended" icon for misses because that seems to feel better than using a sword for misses.
                     let defended = Html.img [prop.ariaLabel "Defended"; prop.src "img/shield_16x16.png"]
                     let regularHit = Html.img [prop.ariaLabel "Hit"; prop.src "img/sword_16x16.png"]
                     let bigHit = Html.img [prop.ariaLabel "Big Hit"; prop.src "img/crossedswords_16x16.png"]
