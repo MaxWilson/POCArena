@@ -170,11 +170,11 @@ module Actual =
                                 Text.align Center
                                 Text.fill Color.Black
                                 // do NOT scale text to yards
-                                Text.width (50)
+                                Text.width (120)
                                 Text.height (50)
-                                Text.offsetX (25)
+                                Text.offsetX (60)
                                 Text.offsetY (25)
-                                Text.fontSize 9
+                                Text.fontSize 12
                                 Text.fontStyle "800" // unusually bold
                                 Text.key "name"
                                 Text.text c.personalName
