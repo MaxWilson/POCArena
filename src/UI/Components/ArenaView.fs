@@ -48,7 +48,6 @@ module private Impl =
                 @ props)
     let toYard(x:int) = float x * 1.<yards>
     let display (pixelSize: int * int) render =
-        printfn $"Display: {pixelSize}"
         stage [
             Stage.height (snd pixelSize)
             Stage.width (fst pixelSize)
@@ -114,9 +113,57 @@ module private Setup =
                             circle [
                                 Circle.radius (r.scaleX 3.<yards>)
                                 Circle.fill (if isTeamA then Color.Blue else Color.Purple)
-                                Circle.key "circle"
-                                // Circle.offsetX -25
-                                // Circle.offsetY -25
+                                Circle.key "outline"
+                                ]
+                            text [
+                                Text.verticalAlign Middle
+                                Text.align Center
+                                Text.fill Color.Black
+                                // do NOT scale text to yards
+                                Text.width (50)
+                                Text.height (50)
+                                Text.offsetX (25)
+                                Text.offsetY (25)
+                                Text.fontSize 9
+                                Text.fontStyle "800" // unusually bold
+                                Text.key "name1"
+                                Text.text label
+                                ]
+                            |]
+
+                        ]
+                ]
+            ]
+
+let Setup = Setup.View
+module Actual =
+
+    [<ReactComponent>]
+    let View (combatants: Combatant list) dispatch =
+        display (300, 300) <| fun r -> [
+            Layer.createNamed "Background" [
+                Rect.create [
+                    Rect.x 0
+                    Rect.y 0
+                    Rect.fill Color.LightGrey
+                    Rect.width winW
+                    Rect.height winH
+                    Rect.key "Rect1"
+                    ]
+                ]
+            layoutGrid r
+            Layer.createNamed "combatants" [
+                for c in combatants do
+                    Group.create ([
+                        let x,y = c.coords
+                        Group.x (r.scaleX x)
+                        Group.y (r.scaleY y)
+                        Group.key (toString c.Id)
+                        Group.children [
+                            circle [
+                                Circle.radius (r.scaleX 0.5<yards>)
+                                Circle.fill (if c.team = 1 then Color.Blue else Color.Purple)
+                                Circle.key "outline"
                                 ]
                             text [
                                 Text.verticalAlign Middle
@@ -130,31 +177,11 @@ module private Setup =
                                 Text.fontSize 9
                                 Text.fontStyle "800" // unusually bold
                                 Text.key "name"
-                                Text.text label
+                                Text.text c.personalName
                                 ]
-                            |]
-
-                        ]
+                            ]
+                        ]: IGroupProperty list)
                 ]
-            ]
-
-let Setup = Setup.View
-module Actual =
-
-    [<ReactComponent>]
-    let View dispatch =
-        display (300, 300) <| fun r -> [
-            Layer.createNamed "Background" [
-                Rect.create [
-                    Rect.x 0
-                    Rect.y 0
-                    Rect.fill Color.LightGrey
-                    Rect.width winW
-                    Rect.height winH
-                    Rect.key "Rect1"
-                    ]
-                ]
-            layoutGrid r
             ]
 
 let Actual = Actual.View

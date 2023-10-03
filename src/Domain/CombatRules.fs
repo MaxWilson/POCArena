@@ -229,19 +229,40 @@ let fight (cqrs: CQRS.CQRS<_,Combat>) =
             loop (counter + 1)
     loop 1
 
-let toCombatants (db: Map<string, Creature>) team =
+let toCombatants (db: Map<string, Creature>) team positioner =
     // we want numbers to ascend smoothly on a side, so that we can use numbers to prioritize targets in the same order they were in fightsetup
     let mutable counter = 0
     fun (group: GroupSetup) ->
         [   for quantity, name in group.members do
                 for i in 1..quantity do
-                    Combatant.fresh(team, (if quantity > 1 then $"{name} {i}" else name), counter + i, db[name])
+                    let stats = db[name]
+                    Combatant.fresh(team, (if quantity > 1 then $"{name} {i}" else name), counter + i, positioner (group.center, group.radius_, stats), stats)
                 counter <- counter + quantity
             ]
 
+let makeGroupPositioner ()  = // a groupPositioner is stateful so it can keep track of which spaces are still empty
+    let mutable occupiedCells = Set.empty
+    fun (center: Coords, radius: float<yards>, stats) ->
+        let gen() =
+            let angleRadians = random.NextDouble() * 2. * System.Math.PI
+            let radius = random.NextDouble() * radius
+            let x = cos angleRadians * radius + fst center |> Ops.round
+            let y = sin angleRadians * radius + snd center |> Ops.round
+            x, y
+        let rec loop failureCount radius candidate =
+            let x,y = candidate
+            if occupiedCells.Contains (int x, int y) then
+                if failureCount > 10 then loop 0 (radius + 1.<yards>) (gen()) // maybe it's full; widen the radius so we don't get stuck in an infinite loop
+                else loop (failureCount+1) radius (gen())
+            else
+                occupiedCells <- occupiedCells.Add (int x, int y)
+                candidate
+        loop 0 radius (gen())
+
 let createCombat (db: Map<string, Creature>) (team1: TeamSetup) team2 =
+    let positioner = makeGroupPositioner() // stateful!
     { combatants =
-        (team1 |> List.collect (toCombatants db 1)) @ (team2 |> List.collect (toCombatants db 2))
+        (team1 |> List.collect (toCombatants db 1 positioner)) @ (team2 |> List.collect (toCombatants db 2 positioner))
         |> Seq.map(fun c -> c.Id, c)
         |> Map.ofSeq
         }
@@ -320,6 +341,7 @@ let calibrate db (team1: TeamSetup) (center: Coords, radius: Distance, enemyType
     | [] ->
         return None, None, None
     | inbounds ->
+        breakHere()
         let min, _ = inbounds |> List.minBy fst
         let max, (_, sampleFight) = inbounds |> List.maxBy fst
         return Some min, Some max, Some sampleFight

@@ -212,7 +212,7 @@ module Queue =
 type Ops with
     static member add(item, data: _ Queue.d) = Queue.append item data
     static member addTo (data:_ Queue.d) = fun item -> Ops.add(item, data)
-
+    static member round<[<Measure>]'u>(x: float<'u>): float<'u> = System.Math.Round(float x) |> LanguagePrimitives.FloatWithMeasure
 // Hit tip to https://gist.github.com/jwosty/5338fce8a6691bbd9f6f
 // and to https://github.com/fsprojects/FSharpx.Extras/blob/da43a30aa1b2a08c86444777a5edb03027cf5c1c/src/FSharpx.Extras/ComputationExpressions/State.fs
 // although I had to fix some bugs with the while loop support.

@@ -218,7 +218,7 @@ let ViewCombat (setup, combatLog: CombatLog) dispatch =
     let combat, setCombat = React.useState (combatLog |> List.last |> snd)
     let currentIndex, setCurrentIndex = React.useState 0
     class' "combat" Html.div [
-        class' "visuals" Html.div [ArenaView.Actual dispatch]
+        class' "visuals" Html.div [ArenaView.Actual (combat.combatants.Values |> List.ofSeq) dispatch]
         class' "statusTable" Html.div [
             Html.table [
                 Html.thead [

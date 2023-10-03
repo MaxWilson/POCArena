@@ -234,6 +234,8 @@ module Data =
         | Attack of AttackDetails
         | Move of Destination
         | Yield // end turn, wait for things to change
+    type Coords = float<yards> * float<yards>
+    type Distance = float<yards>
     type Combatant = {
         personalName: string
         number: int
@@ -247,11 +249,12 @@ module Data =
         parriesUsed: int
         attacksUsed: int
         rapidStrikeUsed: bool
+        coords: Coords
         }
         with
         member this.CurrentHP_ = this.stats.HP_ - this.injuryTaken
         member this.Id : CombatantId = this.team, this.personalName
-        static member fresh (team, name, number, stats: Creature) =
+        static member fresh (team, name, number, coords, stats: Creature) =
             {   team = team
                 personalName = name
                 number = number
@@ -264,6 +267,7 @@ module Data =
                 parriesUsed = 0
                 attacksUsed = 0
                 rapidStrikeUsed = false
+                coords = coords
                 }
         member this.is (status: Status) = this.statusMods |> List.exists ((=) status)
         member this.isAny (statuses: Status list) = this.statusMods |> List.includes statuses
@@ -365,13 +369,12 @@ module Data =
         | CalibratedResult of lower:int option * upper:int option * sample:CombatLog
         | SpecificResult of CombatLog * {| victors: int list |}
     type Outcome = CritSuccess of int | Success of int | CritFail of int | Fail of int
-    type Coords = float<yards> * float<yards>
-    type Distance = float<yards>
     type 'members GroupSetup = {
         members: 'members
         center: Coords
         radius: Distance option
         }
+        with member this.radius_ = defaultArg this.radius 5.<yards>
     type GroupSetup = ((int * string) list) GroupSetup
     type TeamSetup = GroupSetup list
     type Opposition =

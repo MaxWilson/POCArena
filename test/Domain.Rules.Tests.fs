@@ -26,12 +26,13 @@ let Tests = testLabel "Unit" <| testList "Rules" [
         verify <@ baseDamage 100 = (RollSpec.create(11,6), RollSpec.create(13,6)) @>
 
     testCase "Spot check defense choice" <| fun () ->
-        let previousAttacker = Combatant.fresh(2, "Ogre 1", 1, Creature.create "Ogre 1")
-        let attacker = Combatant.fresh(2, "Ogre 2", 2, Creature.create "Ogre 2")
-        let gunman = Combatant.fresh(2, "Gunman", 3, { Creature.create "Gunman" with CannotBeParried = true })
+        let nowhere = (0.<yards>, 0.<yards>)
+        let previousAttacker = Combatant.fresh(2, "Ogre 1", 1, nowhere, Creature.create "Ogre 1")
+        let attacker = Combatant.fresh(2, "Ogre 2", 2, nowhere, Creature.create "Ogre 2")
+        let gunman = Combatant.fresh(2, "Gunman", 3, nowhere, { Creature.create "Gunman" with CannotBeParried = true })
         let create dodge parry block retreatUsed =
             let stats = { Creature.create("test") with Dodge = Some dodge; Parry = Some parry; Block = Some block }
-            { Combatant.fresh(1, "test1", 1, stats) with retreatUsed = if retreatUsed then Some previousAttacker.Id else None }
+            { Combatant.fresh(1, "test1", 1, nowhere, stats) with retreatUsed = if retreatUsed then Some previousAttacker.Id else None }
         let chooseDefenseWith f dodge parry block retreat parriesUsed =
             let combatant = create dodge parry block retreat
             let combatant = { combatant with parriesUsed = parriesUsed; stats = f combatant.stats }
@@ -89,12 +90,13 @@ let Tests = testLabel "Unit" <| testList "Rules" [
         verify <@ chooseDefenseWithPriorRetreat 10 0 0 attacker.Id = (13, { defense = Dodge; targetRetreated = true })  @>
 
     testCase "Spot check target prioritization" <| fun () ->
+        let nowhere = (0.<yards>, 0.<yards>)
         let attacker =
-            Combatant.fresh(1, "Andy", 1, Creature.create "Knight")
+            Combatant.fresh(1, "Andy", 1, nowhere, Creature.create "Knight")
         let mutable counter = 2
         let create name injury conditions =
             counter <- counter + 1
-            { Combatant.fresh(2, name, counter, Creature.create "Target") with injuryTaken = injury; statusMods = conditions }
+            { Combatant.fresh(2, name, counter, nowhere, Creature.create "Target") with injuryTaken = injury; statusMods = conditions }
         // we put stunned and prone targets at high priority.
         // prefer targets that are stunned but not yet at -HP,
         // then targets that are prone but not yet at -HP,
