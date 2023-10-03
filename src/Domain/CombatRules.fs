@@ -232,13 +232,14 @@ let fight (cqrs: CQRS.CQRS<_,Combat>) =
 let toCombatants (db: Map<string, Creature>) team =
     // we want numbers to ascend smoothly on a side, so that we can use numbers to prioritize targets in the same order they were in fightsetup
     let mutable counter = 0
-    fun (quantity, name:string) ->
-        [   for i in 1..quantity do
-                Combatant.fresh(team, (if quantity > 1 then $"{name} {i}" else name), counter + i, db[name])
-            counter <- counter + quantity
+    fun (group: GroupSetup) ->
+        [   for quantity, name in group.members do
+                for i in 1..quantity do
+                    Combatant.fresh(team, (if quantity > 1 then $"{name} {i}" else name), counter + i, db[name])
+                counter <- counter + quantity
             ]
 
-let createCombat (db: Map<string, Creature>) team1 team2 =
+let createCombat (db: Map<string, Creature>) (team1: TeamSetup) team2 =
     { combatants =
         (team1 |> List.collect (toCombatants db 1)) @ (team2 |> List.collect (toCombatants db 2))
         |> Seq.map(fun c -> c.Id, c)
@@ -249,10 +250,22 @@ let specificFight db team1 team2 = async {
     let victors = fight cqrs
     return cqrs.LogWithMessages(), victors
     }
-let calibrate db team1 (enemyType, minbound, maxbound, defeatCriteria) = async {
+module Team =
+    let randomInitialPosition members : _ GroupSetup =
+        let yards n = float n * 1.<yards>
+        {   members = members
+            // we'll use the middle 20 x 20 as the default center instead of the whole 40 x 40 area
+            center = (10 + random.Next 19 |> yards, 10 + random.Next 19 |> yards)
+            radius = None
+            }
+
+    let fresh (monsters: (int * string) list): TeamSetup = monsters |> List.map (fun m -> randomInitialPosition [m])
+    let freshCalibrated() = Opposition.calibrated (None, None, None, TPK) randomInitialPosition
+
+let calibrate db (team1: TeamSetup) (center: Coords, radius: Distance, enemyType, minbound, maxbound, defeatCriteria) = async {
     let runForN n = async {
         do! Async.Sleep 0 // yield the JS runtime  in case UI updates need to be processed
-        let combat = createCombat db team1 [ n, enemyType ]
+        let combat = createCombat db team1 (Team.fresh [n, enemyType ]) // instantiate. TODO: instantiate at specific positions, as soon as monsters have positions.
         let cqrs = CQRS.CQRS.Create(combat, update)
         return cqrs, fight cqrs
         }

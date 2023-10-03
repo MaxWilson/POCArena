@@ -11,42 +11,42 @@ open UI.Components.Arena
 [<AutoOpen>]
 module private Impl =
     type RenderHelper(pixelWidth, pixelHeight) =
-        let _scaleX, _scaleY = (float pixelWidth / 40.<yard>), (float pixelHeight / 40.<yard>)
+        let _scaleX, _scaleY = (float pixelWidth / 40.<yards>), (float pixelHeight / 40.<yards>)
         // hmmm, I guess we want to use the same scale for both X and Y don't we? Take the minimum and just let the other space go unused.
         let _scaleX, _scaleY = let m = min _scaleX _scaleY in m, m
-        member _.scaleX (x: float<yard>) = x * _scaleX
+        member _.scaleX (x: float<yards>) = x * _scaleX
         member _.unscaleX (x: float) = x / _scaleX
-        member _.scaleY (y: float<yard>) = y * _scaleY
+        member _.scaleY (y: float<yards>) = y * _scaleY
         member _.unscaleY (y: float) = y / _scaleY
-        member _.rect name (x:float<yard>,y:float<yard>) props =
+        member _.rect name (x:float<yards>,y:float<yards>) props =
             Rect.create ([
                 Rect.x (x * _scaleX)
                 Rect.y (y * _scaleY)
                 Rect.key name
                 ]
                 @props)
-        member _.circle name (x:float<yard>,y:float<yard>) props =
+        member _.circle name (x:float<yards>,y:float<yards>) props =
             Circle.create ([
                 Circle.x (x * _scaleX)
                 Circle.y (y * _scaleY)
                 Circle.key name
                 ]
                 @props)
-        member _.text name (x:float<yard>,y:float<yard>) props =
+        member _.text name (x:float<yards>,y:float<yards>) props =
             Text.create ([
                 Text.x (x * _scaleX)
                 Text.y (y * _scaleY)
                 Text.key name
                 ]
                 @props)
-        member _.group name (x:float<yard>,y:float<yard>) (props: IGroupProperty list) =
+        member _.group name (x:float<yards>,y:float<yards>) (props: IGroupProperty list) =
             Group.create (([
                 Group.x (x * _scaleX)
                 Group.y (y * _scaleY)
                 Group.key name
                 ] : IGroupProperty list)
                 @ props)
-    let toYard(x:int) = float x * 1.<yard>
+    let toYard(x:int) = float x * 1.<yards>
     let display (pixelSize: int * int) render =
         printfn $"Display: {pixelSize}"
         stage [
@@ -74,8 +74,8 @@ module private Impl =
                         Rect.stroke Color.Black
                         Rect.strokeWidth 1
                         Rect.opacity 0.3
-                        Rect.width (r.scaleX 1.<yard>)
-                        Rect.height (r.scaleY 1.<yard>)
+                        Rect.width (r.scaleX 1.<yards>)
+                        Rect.height (r.scaleY 1.<yards>)
                         ]
             ]
 
@@ -89,22 +89,31 @@ module private Setup =
         display (300, 300) <| fun r -> [
             layoutGrid r
             Layer.createNamed "teams" [
-                let teams =
+                let groups = [
+                    let specifics isTeamA (side: GroupSetup list) = [
+                        for ix, group in side |> List.mapi Tuple2.create do
+                            for n, monsterName in group.members do
+                                let c = db.catalog[monsterName]
+                                (isTeamA, ix), c.Quantify n, group.center, group.radius
+                        ]
+                    yield! (setup.sideA |> specifics true)
                     match setup.sideB with
-                    | Calibrate(Some name, _, _, _) -> [1, setup.sideA; 2, [99, name]]
-                    | Specific(monsters) -> [1, setup.sideA; 2, monsters]
-                    | _ -> [1, setup.sideA]
-                for team, groups in teams do
-                    let x,y = setup.teamPositions[team]
-                    r.group $"Group{team}" (x,y) [
+                    | Specific sideB -> yield! specifics false sideB
+                    | Calibrate ({ members = (Some name, _, _, _) } as group) ->
+                        let c = db.catalog[name]
+                        (false, 0), $"N {c.PluralName_}", group.center, group.radius
+                    | Calibrate _ -> ()
+                    ]
+                for ((isTeamA, _) as groupAddress: bool * int, label, center, radius) in groups do
+                    r.group $"Group{groupAddress}" center [
                         Group.draggable
-                        Group.onDragEnd(fun e -> onDrag(team, (r.unscaleX (e.target.x()), r.unscaleY (e.target.y()))))
+                        Group.onDragEnd(fun e -> onDrag(groupAddress, (r.unscaleX (e.target.x()), r.unscaleY (e.target.y()))))
                         // Group.offsetX -25
                         // Group.offsetY -25
                         Group.children [|
                             circle [
-                                Circle.radius (r.scaleX 3.<yard>)
-                                Circle.fill (if team = 1 then Color.Blue else Color.Purple)
+                                Circle.radius (r.scaleX 3.<yards>)
+                                Circle.fill (if isTeamA then Color.Blue else Color.Purple)
                                 Circle.key "circle"
                                 // Circle.offsetX -25
                                 // Circle.offsetY -25
@@ -121,13 +130,7 @@ module private Setup =
                                 Text.fontSize 9
                                 Text.fontStyle "800" // unusually bold
                                 Text.key "name"
-                                let txt =
-                                    [   for n, monsterName in groups do
-                                            let c = db.catalog[monsterName] in if n = 1 then c.name else c.PluralName_
-                                        ]
-                                    |> String.join ", "
-
-                                Text.text (txt)
+                                Text.text label
                                 ]
                             |]
 

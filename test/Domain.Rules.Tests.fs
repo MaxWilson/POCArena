@@ -134,6 +134,6 @@ let Tests = testLabel "Unit" <| testList "Rules" [
             | Domain.Parser.Creature (v, Packrat.End) -> v
             | v -> shouldntHappen()
         let db = [parse "Minotaur: ST 23 Berserk Auto"] |> List.map (fun c -> c.name, c) |> Map.ofList
-        let c = createCombat db [(1, "Minotaur")] [(1, "Minotaur")]
+        let c = createCombat db (Team.fresh [(1, "Minotaur")]) (Team.fresh [(1, "Minotaur")])
         verify <@ c.combatants.Values |> List.ofSeq |> List.every (fun c -> c.is Berserk) @>
     ]

@@ -17,7 +17,7 @@ type Model = {
     }
 type Side = SideA | SideB
 type Msg =
-    | ChangeFight of (FightSetup -> FightSetup)
+    | ChangeFightSetup of (FightSetup -> FightSetup)
     | Clear of Side
     | Upsert of Creature
     | SetPage of Page
@@ -41,12 +41,12 @@ let scrollSectionIntoView (element: Browser.Types.Node) = jsNative
 
 let update msg model =
     match msg with
-    | ChangeFight f -> { model with fightSetup = f model.fightSetup }
+    | ChangeFightSetup f -> { model with fightSetup = f model.fightSetup }
     | SetPage page -> { model with page = page }
     | Clear side ->
         let clearSide = function
             | SideA -> { model.fightSetup with sideA = [] }
-            | SideB -> { model.fightSetup with sideB = Calibrate(None, None, None, TPK) }
+            | SideB -> { model.fightSetup with sideB = Team.freshCalibrated() }
         { model with fightSetup = clearSide side }
     | Upsert creature ->
         if creature.name |> String.isntWhitespace then
@@ -70,9 +70,8 @@ let init () =
     let db =
         { catalog = UI.LocalStorage.Catalog.read() |> updateWithDefaults }
     let fight = {
-        sideA = [3, "Peshkali"; 1, "Slugbeast"]
-        sideB = Calibrate(Some "Orc", None, None, TPK)
-        teamPositions = [1, (8.<yard>, 20.<yard>); 2, (33.<yard>, 27.<yard>)] |> Map.ofList
+        sideA = [3, "Peshkali"; 1, "Slugbeast"] |> Team.fresh
+        sideB = Opposition.calibrated (Some "Orc", None, None, TPK) Team.randomInitialPosition
         }
     { page = Home; fightSetup = fight; database = db; execution = NotStarted }
 
@@ -85,18 +84,18 @@ let beginFights (model: Model) dispatch =
         async {
             do! Async.Sleep 100 // force async to yield long enough for the busy animation to show up--I'm not sure why but it doesn't happen sometimes otherwise
             match model.fightSetup.sideB with
-            | _ when (model.fightSetup.sideA |> List.sumBy fst) = 0 ->
+            | _ when (model.fightSetup.sideA |> List.every (fun group -> group.members |> List.sumBy fst = 0)) ->
                 Fight NotStarted |> dispatch
                 informUserOfError "You have to pick monsters first"
-            | Calibrate(None, _, _, _) ->
+            | Calibrate({ members = None, _, _, _ }) ->
                 Fight NotStarted |> dispatch
                 informUserOfError "You have to pick monsters first"
-            | Calibrate(Some name, min, max, defeatCriteria) ->
+            | Calibrate({ members = (Some name, min, max, defeatCriteria) } as sideB) ->
                 let min = (defaultArg min 50 |> float) / 100.
                 let max = (defaultArg max 90 |> float) / 100.
                 match! calibrate model.database.catalog
                         model.fightSetup.sideA
-                        (name, min, max, defeatCriteria) with
+                        (sideB.center, (defaultArg sideB.radius 10.<yards>), name, min, max, defeatCriteria) with
                 | minQuantity, maxQuantity, Some sampleMaxFight ->
                     Completed(model.fightSetup, CalibratedResult(minQuantity, maxQuantity, sampleMaxFight)) |> Fight |> dispatch
                 | v ->

@@ -4,7 +4,7 @@ namespace Domain
 module Data =
     open Domain.Random
 
-    [<Measure>] type yard
+    [<Measure>] type yards
     type 't prop = 't option
     type DamageType = Cutting | Impaling | Crushing | Piercing | Burning | Other
         with
@@ -365,15 +365,25 @@ module Data =
         | CalibratedResult of lower:int option * upper:int option * sample:CombatLog
         | SpecificResult of CombatLog * {| victors: int list |}
     type Outcome = CritSuccess of int | Success of int | CritFail of int | Fail of int
-    type Opposition =
-    | Calibrate of string option * int option * int option * DefeatCriteria
-    | Specific of (int * string) list
-    type FightSetup = {
-        sideA: (int * string) list
-        sideB: Opposition
-        teamPositions: Map<int, float<yard>*float<yard>>
+    type Coords = float<yards> * float<yards>
+    type Distance = float<yards>
+    type 'members GroupSetup = {
+        members: 'members
+        center: Coords
+        radius: Distance option
         }
-        with static member fresh = { sideA = []; sideB = Calibrate(None, None, None, TPK); teamPositions = Map.empty }
+    type GroupSetup = ((int * string) list) GroupSetup
+    type TeamSetup = GroupSetup list
+    type Opposition =
+    | Calibrate of GroupSetup<string option * int option * int option * DefeatCriteria>
+    | Specific of GroupSetup list
+        with
+        static member calibrated members setPosition = Calibrate (members |> setPosition)
+    type FightSetup = {
+        sideA: TeamSetup
+        sideB: Opposition
+        }
+        with static member fresh setPosition = { sideA = []; sideB = Opposition.calibrated (None, None, None, TPK) setPosition }
 
 
 #nowarn "40" // we're not planning on doing any unsafe things during initialization, like evaluating the functions that rely on the object we're busy constructing

@@ -17,7 +17,7 @@ let Tests = testLabel "Unit" <| testList "Behavior" [
             return! fakeFlee
             }
         // we don't care who's in the combat as long as there's someone on both sides
-        let combat = createCombat (["Bob", Creature.create "Bob"] |> Map.ofList) [1, "Bob"] [1, "Bob"]
+        let combat = createCombat (["Bob", Creature.create "Bob"] |> Map.ofList) (Team.fresh [1, "Bob"]) (Team.fresh [1, "Bob"])
         let bob = combat.combatants.Keys |> Seq.head
         let toCtx combat = { me = bob; combat = combat }
 
