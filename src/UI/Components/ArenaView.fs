@@ -83,14 +83,14 @@ module private Setup =
     open type Circle
 
     [<ReactComponent>]
-    let View (db: Domain.Data.MonsterDatabase) (setup: AutoFight.FightSetup) dispatch =
+    let View (db: Domain.Data.MonsterDatabase) (setup: FightSetup) dispatch =
         display (300, 300) <| fun r -> [
             layoutGrid r
             Layer.createNamed "teams" [
                 let teams =
                     match setup.sideB with
-                    | AutoFight.Calibrate(Some name, _, _, _) -> [1, setup.sideA; 2, [99, name]]
-                    | AutoFight.Specific(monsters) -> [1, setup.sideA; 2, monsters]
+                    | Calibrate(Some name, _, _, _) -> [1, setup.sideA; 2, [99, name]]
+                    | Specific(monsters) -> [1, setup.sideA; 2, monsters]
                     | _ -> [1, setup.sideA]
                 for team, groups in teams do
                     let x,y = setup.teamPositions[team]

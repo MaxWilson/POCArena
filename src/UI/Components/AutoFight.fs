@@ -5,15 +5,6 @@ open Domain.CombatRules
 type Page =
     | Home
     | Editing of name:string
-type Opposition =
-    | Calibrate of string option * int option * int option * DefeatCriteria
-    | Specific of (int * string) list
-type FightSetup = {
-    sideA: (int * string) list
-    sideB: Opposition
-    teamPositions: Map<int, float<yard>*float<yard>>
-    }
-    with static member fresh = { sideA = []; sideB = Calibrate(None, None, None, TPK); teamPositions = Map.empty }
 type 't Awaitable =
     | NotStarted
     | InProgress

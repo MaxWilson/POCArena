@@ -3,15 +3,6 @@ open Domain
 open Domain.Random
 open Domain.Behavior
 
-type DefeatCriteria =
-    | TPK
-    | OneCasualty
-    | HalfCasualties
-type FightResult =
-    | CalibratedResult of lower:int option * upper:int option * sample:CombatLog
-    | SpecificResult of CombatLog * {| victors: int list |}
-type Outcome = CritSuccess of int | Success of int | CritFail of int | Fail of int
-
 let successTest target x =
     if x >= target + 10 then CritFail (x - target)
     elif x = 17 then if target >= 16 then Fail(x - 16) else CritFail (x - 16)

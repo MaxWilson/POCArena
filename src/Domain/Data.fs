@@ -357,6 +357,25 @@ module Data =
             | NewRound _ -> model
     type CombatLog = (Event option * Combat) list
 
+    type DefeatCriteria =
+        | TPK
+        | OneCasualty
+        | HalfCasualties
+    type FightResult =
+        | CalibratedResult of lower:int option * upper:int option * sample:CombatLog
+        | SpecificResult of CombatLog * {| victors: int list |}
+    type Outcome = CritSuccess of int | Success of int | CritFail of int | Fail of int
+    type Opposition =
+    | Calibrate of string option * int option * int option * DefeatCriteria
+    | Specific of (int * string) list
+    type FightSetup = {
+        sideA: (int * string) list
+        sideB: Opposition
+        teamPositions: Map<int, float<yard>*float<yard>>
+        }
+        with static member fresh = { sideA = []; sideB = Calibrate(None, None, None, TPK); teamPositions = Map.empty }
+
+
 #nowarn "40" // we're not planning on doing any unsafe things during initialization, like evaluating the functions that rely on the object we're busy constructing
 module Parser =
     open Packrat
