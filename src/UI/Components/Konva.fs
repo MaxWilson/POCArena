@@ -33,10 +33,13 @@ type IShapeProperty =
         inherit IRectProperty
         inherit ITextProperty
         end
+
 [<Erase>]
-type KonvaNode =
+type KonvaNode = // the actual underlying Konva node which the React layers (below) create.
     abstract x : unit -> float
+    abstract x : float -> unit
     abstract y : unit -> float
+    abstract y : float -> unit
 
 [<AutoOpen>]
 module private Interop =
