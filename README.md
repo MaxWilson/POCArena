@@ -34,3 +34,5 @@ This command builds the application and puts the generated files into the `dist`
 # Attributions
 
 Sword icon created by pongsakornRed - Flaticon. https://www.flaticon.com/free-icons/sword
+Sword icons created by Freepik - Flaticon. https://www.flaticon.com/free-icons/sword
+Shield icons created by Freepik - Flaticon. https://www.flaticon.com/free-icons/sword
