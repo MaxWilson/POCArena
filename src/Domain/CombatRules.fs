@@ -236,7 +236,14 @@ let toCombatants (db: Map<string, Creature>) team positioner =
         [   for quantity, name in group.members do
                 for i in 1..quantity do
                     let stats = db[name]
-                    Combatant.fresh(team, (if quantity > 1 then $"{name} {i}" else name), counter + i, positioner (group.center, group.radius_, stats), stats)
+                    let radius =
+                        match group.radius with
+                        | Some r -> r
+                        | None ->
+                            // we want it full but not THAT full
+                            let memberCount = group.members |> List.sumBy fst
+                            1.5<yards> * sqrt (float memberCount)
+                    Combatant.fresh(team, (if quantity > 1 then $"{name} {i}" else name), counter + i, positioner (group.center, radius, stats), stats)
                 counter <- counter + quantity
             ]
 

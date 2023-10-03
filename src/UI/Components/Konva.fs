@@ -35,11 +35,23 @@ type IShapeProperty =
         end
 
 [<Erase>]
+type CursorType = Default | Pointer
+type Style = {
+    mutable cursor: CursorType
+    }
+type Container =
+    abstract style: Style
+
+[<Erase>]
 type KonvaNode = // the actual underlying Konva node which the React layers (below) create.
     abstract x : unit -> float
     abstract x : float -> unit
     abstract y : unit -> float
     abstract y : float -> unit
+    abstract getStage: unit -> StageNode
+and StageNode =
+    inherit KonvaNode
+    abstract container: unit -> Container
 
 [<AutoOpen>]
 module private Interop =
@@ -77,13 +89,18 @@ type Shape =
     static member inline opacity (v:float) = mkShapeAttr "opacity" v
     static member inline fill (color:Color) = mkShapeAttr "fill" color
     static member inline fill (color:string) = mkShapeAttr "fill" color
+    static member inline stroke (color:Color) = mkShapeAttr "stroke" color
+    static member inline stroke (color:string) = mkShapeAttr "stroke" color
+    static member inline strokeWidth (width: int) = mkShapeAttr "strokeWidth" width
     static member inline draggable = mkShapeAttr "draggable" true
     static member inline onDragStart (f: ({| target: KonvaNode |} -> 'a)) = mkShapeAttr "onDragStart" f
     static member inline onDragEnd (f: ({| target: KonvaNode |} -> 'a)) = mkShapeAttr "onDragEnd" f
-    static member inline onClick (f: ({| target: 'a |} -> 'b)) = mkShapeAttr "onClick" f
-    static member inline onMouseDown (f: ({| target: 'a |} -> 'b)) = mkShapeAttr "onMouseDown" f
-    static member inline onMouseUp (f: ({| target: 'a |} -> 'b)) = mkShapeAttr "onMouseUp" f
-    static member inline onMouseOver (f: ({| target: 'a |} -> 'b)) = mkShapeAttr "onMouseOver" f
+    static member inline onClick (f: ({| target: KonvaNode |} -> 'b)) = mkShapeAttr "onClick" f
+    static member inline onMouseDown (f: ({| target: KonvaNode |} -> 'b)) = mkShapeAttr "onMouseDown" f
+    static member inline onMouseUp (f: ({| target: KonvaNode |} -> 'b)) = mkShapeAttr "onMouseUp" f
+    static member inline onMouseOver (f: ({| target: KonvaNode |} -> 'b)) = mkShapeAttr "onMouseOver" f
+    static member inline onMouseEnter (f: ({| target: KonvaNode |} -> 'b)) = mkShapeAttr "onMouseEnter" f
+    static member inline onMouseLeave (f: ({| target: KonvaNode |} -> 'b)) = mkShapeAttr "onMouseLeave" f
     static member inline ref handle = mkShapeAttr "ref" handle
     static member inline offsetX (v: float) = mkShapeAttr "offsetX" v
     static member inline offsetY (v: float) = mkShapeAttr "offsetY" v

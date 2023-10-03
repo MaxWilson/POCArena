@@ -374,7 +374,6 @@ module Data =
         center: Coords
         radius: Distance option
         }
-        with member this.radius_ = defaultArg this.radius 5.<yards>
     type GroupSetup = ((int * string) list) GroupSetup
     type TeamSetup = GroupSetup list
     type Opposition =

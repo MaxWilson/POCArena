@@ -140,6 +140,8 @@ module Actual =
 
     [<ReactComponent>]
     let View (combatants: Combatant list) dispatch =
+        let shownNames, setShownNames = React.useState Map.empty
+        let hover, setHover = React.useState None
         display (300, 300) <| fun r -> [
             Layer.createNamed "Background" [
                 Rect.create [
@@ -159,26 +161,43 @@ module Actual =
                         Group.x (r.scaleX x)
                         Group.y (r.scaleY y)
                         Group.key (toString c.Id)
+                        Group.onClick (fun e -> shownNames |> Map.change c.Id (function Some () -> None | None -> Some ()) |> setShownNames)
                         Group.children [
                             circle [
                                 Circle.radius (r.scaleX 0.5<yards>)
                                 Circle.fill (if c.team = 1 then Color.Blue else Color.Purple)
                                 Circle.key "outline"
+                                Circle.onMouseEnter (fun e ->
+                                    e.target.getStage().container().style.cursor <- CursorType.Pointer
+                                    setHover (Some c.Id))
+                                Circle.onMouseLeave (fun e ->
+                                    if hover = (Some c.Id) then
+                                        e.target.getStage().container().style.cursor <- CursorType.Default
+                                        setHover None
+                                    )
+                                if hover = Some c.Id then
+                                    Circle.stroke Color.Black
+                                    Circle.strokeWidth 2
+                                elif shownNames |> Map.containsKey c.Id then
+                                    Circle.stroke Color.Black
+                                    Circle.strokeWidth 1
                                 ]
-                            text [
-                                Text.verticalAlign Middle
-                                Text.align Center
-                                Text.fill Color.Black
-                                // do NOT scale text to yards
-                                Text.width (120)
-                                Text.height (50)
-                                Text.offsetX (60)
-                                Text.offsetY (25)
-                                Text.fontSize 12
-                                Text.fontStyle "800" // unusually bold
-                                Text.key "name"
-                                Text.text c.personalName
-                                ]
+                            if hover = Some c.Id || shownNames |> Map.containsKey c.Id then
+                                text [
+                                    Text.verticalAlign Middle
+                                    Text.align Center
+                                    Text.fill Color.Black
+                                    // do NOT scale text to yards
+                                    Text.width (120)
+                                    Text.height (50)
+                                    Text.offsetX (60)
+                                    Text.offsetY (35)
+                                    Text.fontSize 12
+                                    if hover = Some c.Id then Text.fontStyle "900" // unusually bold
+                                    else Text.fontStyle "bold"
+                                    Text.key "name"
+                                    Text.text c.personalName
+                                    ]
                             ]
                         ]: IGroupProperty list)
                 ]
