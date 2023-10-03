@@ -140,7 +140,7 @@ module Actual =
 
     [<ReactComponent>]
     let View dispatch =
-        display (300, 200) <| fun r -> [
+        display (300, 300) <| fun r -> [
             Layer.createNamed "Background" [
                 Rect.create [
                     Rect.x 0
