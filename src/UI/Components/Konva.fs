@@ -53,7 +53,7 @@ module private Interop =
     let inline text (props: ITextProperty array) = Interop.reactApi.createElement(import "Text" "react-konva", createObj !!props)
 
 [<Erase>]
-type Color = Red | Green | Blue | Yellow | Grey | Orange | LightGrey | DarkGrey | Black
+type Color = Red | Green | Blue | Yellow | Grey | Orange | Purple | LightGrey | DarkGrey | Black
 
 type Shape =
     static member inline key (key:_) = mkShapeAttr "key" key

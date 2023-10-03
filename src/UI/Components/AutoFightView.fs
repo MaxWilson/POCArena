@@ -232,7 +232,7 @@ let ViewCombat (setup, combatLog: CombatLog) dispatch =
                     for c in combat.combatants.Values |> Seq.sortBy(fun c -> c.team, c.number) do
                         Html.tr [
                             prop.key c.personalName
-                            prop.className (if c.team = 1 then "teamBlue" else "teamRed")
+                            prop.className (if c.team = 1 then "teamBlue" else "teamPurple")
                             prop.children [
                                 Html.td c.personalName
                                 Html.td c.CurrentHP_
@@ -310,7 +310,7 @@ let ViewCombat (setup, combatLog: CombatLog) dispatch =
                         else React.fragment []
                     let name = function
                         | (1, name) -> classTxt' "blueName" Html.span name
-                        | (2, name) -> classTxt' "redName" Html.span name
+                        | (2, name) -> classTxt' "purpleName" Html.span name
                         | _ -> shouldntHappen()
                     let miss = Html.img [prop.ariaLabel "Miss"; prop.src "img/shield_16x16.png"] // reuse the "defended" icon for misses because that seems to feel better than using a sword for misses.
                     let defended = Html.img [prop.ariaLabel "Defended"; prop.src "img/shield_16x16.png"]
@@ -319,18 +319,19 @@ let ViewCombat (setup, combatLog: CombatLog) dispatch =
                         //<img aria-label="🗡️" src="/assets/47f10f1fb3beec3810f0f37cf4cccd95.svg" alt="🗡️" draggable="false" class="emoji" data-type="emoji" data-name=":dagger:">
                         //<img aria-label="🗡️" src="/assets/47f10f1fb3beec3810f0f37cf4cccd95.svg" alt="🗡️" draggable="false" class="emoji" data-type="emoji" data-name=":dagger:">
                         //<img aria-label="⚔️" src="/assets/e7159ba0fcc85f39f95227dd85f44aeb.svg" alt="⚔️" draggable="false" class="emoji" data-type="emoji" data-name=":crossed_swords:">
+                    let hpText hp = classP' "injury" Html.span [prop.text $"{hp} HP"]
                     match msg with
                     | Hit (ids, _, injury, statusImpact, rollDetails) ->
                         let hit verb =
-                            div [bigHit; name ids.attacker; Html.text $" {verb} "; name ids.target; Html.text $" with a hit for {injury} HP"; viewDetails rollDetails]
+                            div [bigHit; name ids.attacker; Html.text $" {verb} "; name ids.target; Html.text $" with a hit for "; hpText injury; viewDetails rollDetails]
                         match statusImpact with
                         | v when v |> List.contains Dead -> hit "kills"
                         | v when v |> List.contains Unconscious -> hit "KOs"
                         | v when v |> List.contains Stunned -> hit "stuns"
                         | v when v |> List.contains Berserk ->
-                            div [bigHit; name ids.attacker; Html.text $" drives "; name ids.target; Html.text $" berserk with a hit for {injury} HP"; viewDetails rollDetails]
+                            div [bigHit; name ids.attacker; Html.text $" drives "; name ids.target; Html.text $" berserk with a hit for"; hpText injury; viewDetails rollDetails]
                         | _ ->
-                            div [regularHit; name ids.attacker; Html.text $" hits "; name ids.target; Html.text $" for {injury} HP"; viewDetails rollDetails]
+                            div [regularHit; name ids.attacker; Html.text $" hits "; name ids.target; Html.text $" for "; hpText injury; viewDetails rollDetails]
                     | SuccessfulDefense(ids, { defense = Parry }, rollDetails) ->
                         div [defended; name ids.attacker; Html.text " attacks "; name ids.target; Html.text " who parries"; viewDetails rollDetails]
                     | SuccessfulDefense(ids, { defense = Block }, rollDetails) ->

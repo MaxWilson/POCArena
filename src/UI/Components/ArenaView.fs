@@ -101,7 +101,7 @@ module private Setup =
                         Group.children [|
                             circle [
                                 Circle.radius (r.scaleX 3.<yard>)
-                                Circle.fill (if team = 1 then Color.Blue else Color.Red)
+                                Circle.fill (if team = 1 then Color.Blue else Color.Purple)
                                 Circle.key "circle"
                                 // Circle.offsetX -25
                                 // Circle.offsetY -25
