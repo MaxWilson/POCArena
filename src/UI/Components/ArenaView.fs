@@ -15,7 +15,9 @@ module private Impl =
         // hmmm, I guess we want to use the same scale for both X and Y don't we? Take the minimum and just let the other space go unused.
         let _scaleX, _scaleY = let m = min _scaleX _scaleY in m, m
         member _.scaleX (x: float<yard>) = x * _scaleX
+        member _.unscaleX (x: float) = x / _scaleX
         member _.scaleY (y: float<yard>) = y * _scaleY
+        member _.unscaleY (y: float) = y / _scaleY
         member _.rect name (x:float<yard>,y:float<yard>) props =
             Rect.create ([
                 Rect.x (x * _scaleX)
@@ -83,7 +85,7 @@ module private Setup =
     open type Circle
 
     [<ReactComponent>]
-    let View (db: Domain.Data.MonsterDatabase) (setup: FightSetup) dispatch =
+    let View (db: Domain.Data.MonsterDatabase) (setup: FightSetup, onDrag) dispatch =
         display (300, 300) <| fun r -> [
             layoutGrid r
             Layer.createNamed "teams" [
@@ -96,6 +98,7 @@ module private Setup =
                     let x,y = setup.teamPositions[team]
                     r.group $"Group{team}" (x,y) [
                         Group.draggable
+                        Group.onDragEnd(fun e -> onDrag(team, (r.unscaleX (e.target.x()), r.unscaleY (e.target.y()))))
                         // Group.offsetX -25
                         // Group.offsetY -25
                         Group.children [|
@@ -158,7 +161,7 @@ module private Impl0 =
     let r = System.Random()
     type Movespec = { id: UniqueId; from: int * int; unto: int * int; mutable started: bool; afterwards: unit -> unit }
         with
-        member this.start(node: KonvaNode) =
+        member this.start(node: KonvaNode0) =
             if this.started then ()
             else
                 this.started <- true

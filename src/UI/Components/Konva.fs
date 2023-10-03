@@ -33,6 +33,10 @@ type IShapeProperty =
         inherit IRectProperty
         inherit ITextProperty
         end
+[<Erase>]
+type KonvaNode =
+    abstract x : unit -> float
+    abstract y : unit -> float
 
 [<AutoOpen>]
 module private Interop =
@@ -71,8 +75,8 @@ type Shape =
     static member inline fill (color:Color) = mkShapeAttr "fill" color
     static member inline fill (color:string) = mkShapeAttr "fill" color
     static member inline draggable = mkShapeAttr "draggable" true
-    static member inline onDragStart (f: ({| target: 'a |} -> 'b)) = mkShapeAttr "onDragStart" f
-    static member inline onDragEnd (f: ({| target: 'a |} -> 'b)) = mkShapeAttr "onDragEnd" f
+    static member inline onDragStart (f: ({| target: KonvaNode |} -> 'a)) = mkShapeAttr "onDragStart" f
+    static member inline onDragEnd (f: ({| target: KonvaNode |} -> 'a)) = mkShapeAttr "onDragEnd" f
     static member inline onClick (f: ({| target: 'a |} -> 'b)) = mkShapeAttr "onClick" f
     static member inline onMouseDown (f: ({| target: 'a |} -> 'b)) = mkShapeAttr "onMouseDown" f
     static member inline onMouseUp (f: ({| target: 'a |} -> 'b)) = mkShapeAttr "onMouseUp" f
@@ -133,7 +137,7 @@ type Stage =
     static member inline create (props: IStageProperty list) = stage (props |> Array.ofList)
     static member inline create (props, children) = Stage.create ((Stage.children (children |> Array.ofList))::props)
 
-type KonvaNode =
+type KonvaNode0 =
     [<Emit "$0.to($1)">]
     member inline this.to' (args:obj) : unit = jsNative
 

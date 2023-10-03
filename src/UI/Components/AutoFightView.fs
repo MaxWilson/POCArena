@@ -527,7 +527,13 @@ let View (model: Model) dispatch =
                                     | None -> Html.div "No creatures selected"
                                     ]
                             ]
-                        ArenaView.Setup model.database model.fightSetup dispatch
+                        let notifyTeamMoved (teamNumber, (x: float<yard>, y: float<yard>)) =
+                            let changeTeamSetup (f: FightSetup) =
+                                { f with
+                                    teamPositions = f.teamPositions |> Map.add teamNumber (x,y)
+                                    }
+                            ChangeFight changeTeamSetup |> dispatch
+                        ArenaView.Setup model.database (model.fightSetup, notifyTeamMoved) dispatch
                         ]
                     ExecuteButton model dispatch
                     match model.execution with

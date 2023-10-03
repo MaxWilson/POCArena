@@ -7,14 +7,14 @@ type Msg =
     | Add of UniqueId * coords: (int * int) * title: string
     | Move of UniqueId * Movement
     | Clear
-type VisualObject = {
+type ObsoleteVisualObject = { // todo: erase this
     id: UniqueId
     text: string option
     x: int
     y: int
     }
 type Model = {
-    creatures: Map<UniqueId, VisualObject>
+    creatures: Map<UniqueId, ObsoleteVisualObject>
     history: Msg list
     }
 type FrameInputs = {
