@@ -384,13 +384,15 @@ let View (model: Model) dispatch =
 
                 class' "main" Html.div [
                     class' "fightSetup" Html.div [
-                        let editLink (quantity: int option) (name: string) =
-                            // for aesthetic reasons, we don't want quantity to be part of the link, so it's a separate HTML element
+                        let editLink (quantity: int option) (name: string) (setQuantity: int -> unit) =
+                            // for aesthetic and functional reasons, we don't want quantity to be part of the link, so it's a separate HTML element (usually an input element except for calibrated N)
                             let numberTxt, txt =
                                 let creature = model.database.catalog[name]
+                                let numberInput (q: int) =
+                                    Html.input [prop.type'.number; prop.valueOrDefault q; prop.onChange setQuantity]
                                 match quantity with
-                                | Some 1 -> Html.text "1", creature.name
-                                | Some q -> Html.text (toString q), creature.PluralName_
+                                | Some 1 -> numberInput 1, creature.name
+                                | Some q -> numberInput q, creature.PluralName_
                                 | None -> Html.text "N", creature.PluralName_
                             React.fragment [
                                 numberTxt
@@ -408,8 +410,21 @@ let View (model: Model) dispatch =
                                         else group
                                     )
                                 |> List.filter (fun group -> group.members.Length > 0)
+                        let setQuantity (side: TeamSetup) (groupIndex: int, name: string) q =
+                            side |> List.mapi (
+                                    fun ix group ->
+                                        if ix = groupIndex then
+                                            let members' =
+                                                group.members
+                                                |> List.map (function (_, name') when name = name' -> (q, name) | otherwise -> otherwise)
+                                                |> List.filter (fun (quantity, _) -> quantity > 0)
+                                            { group with members = members' }
+                                        else group
+                                    )
+                                |> List.filter (fun group -> group.members.Length > 0)
                         class' "specificQuantity" Html.div [
                             let changeQuantity address delta fightSetup = { fightSetup with sideA = changeQuantity fightSetup.sideA address delta }
+                            let setQuantity address delta fightSetup = { fightSetup with sideA = setQuantity fightSetup.sideA address delta }
                             let addToSideA monsterName fightSetup =
                                 // add a new group, even if the current monster exists within an existing group, so they can be placed in different locations
                                 { fightSetup with
@@ -426,7 +441,7 @@ let View (model: Model) dispatch =
                                                     Html.div [
                                                         Html.button [prop.text "+"; prop.onClick (fun _ -> dispatch (ChangeFightSetup (changeQuantity (ix, name) +1)))]
                                                         Html.button [prop.text "-"; prop.onClick (fun _ -> dispatch (ChangeFightSetup (changeQuantity (ix, name) -1)))]
-                                                        editLink (Some quantity) name
+                                                        editLink (Some quantity) name (fun q -> dispatch (ChangeFightSetup (setQuantity (ix, name) q)))
                                                         ]
                                         ]
                             ]
@@ -455,6 +470,11 @@ let View (model: Model) dispatch =
                                         | Specific lst ->
                                             { f with sideB = Specific (changeQuantity lst address delta) }
                                         | otherwise -> f // shouldn't normally happen but maybe could I guess if user clicks more rapidly than React can process commands. Just ignore it in that case.
+                                let setQuantity address q (f: FightSetup) =
+                                    match f.sideB with
+                                        | Specific lst ->
+                                            { f with sideB = Specific (setQuantity lst address q) }
+                                        | otherwise -> f // shouldn't normally happen but maybe could I guess if user clicks more rapidly than React can process commands. Just ignore it in that case.
                                 let addToSideB monsterName fightSetup =
                                     // add a new group, even if the current monster exists within an existing group, so they can be placed in different locations
                                     { fightSetup with
@@ -472,13 +492,12 @@ let View (model: Model) dispatch =
                                                 Html.div [
                                                     Html.button [prop.text "+"; onClick (changeQuantity (ix, name) +1)]
                                                     Html.button [prop.text "-"; onClick (changeQuantity (ix, name) -1)]
-                                                    editLink (Some quantity) name
+                                                    editLink (Some quantity) name (setQuantity (ix, name) >> ChangeFightSetup >> dispatch)
                                                     ]
                                     ]
                             | Calibrate({ members = (name, min, max, defeatCriteria) } as setup) ->
                                 let setSideB f fightSetup =
-                                    { fightSetup with sideB = Calibrate { setup with members = f setup.members }
-                                        }
+                                    { fightSetup with sideB = Calibrate { setup with members = f setup.members } }
                                 let setSideBName name = setSideB (fun (_, min, max, defeatCriteria) -> (Some name, min, max, defeatCriteria))
                                 let setSideBMin min = setSideB (fun (name, _, max, defeatCriteria) -> (name, min, max, defeatCriteria))
                                 let setSideBMax max = setSideB (fun (name, min, _, defeatCriteria) -> (name, min, max, defeatCriteria))
@@ -490,7 +509,7 @@ let View (model: Model) dispatch =
                                     | Some name ->
                                         class' "calibrationRange" Html.div [
                                             Html.div [
-                                                editLink None name
+                                                editLink None name ignore
                                                 Html.text "should lose"
                                                 class' "calibrationRange" Html.span [
                                                     let changeMin (txt: string) =

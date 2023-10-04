@@ -93,14 +93,14 @@ module private Setup =
                         for ix, group in side |> List.mapi Tuple2.create do
                             for n, monsterName in group.members do
                                 let c = db.catalog[monsterName]
-                                (isTeamA, ix), c.Quantify n, group.center, group.radius
+                                (isTeamA, ix), c.Quantify n, group.center, Domain.CombatRules.radius_ group
                         ]
                     yield! (setup.sideA |> specifics true)
                     match setup.sideB with
                     | Specific sideB -> yield! specifics false sideB
                     | Calibrate ({ members = (Some name, _, _, _) } as group) ->
                         let c = db.catalog[name]
-                        (false, 0), $"N {c.PluralName_}", group.center, group.radius
+                        (false, 0), $"N {c.PluralName_}", group.center, 5.<yards>
                     | Calibrate _ -> ()
                     ]
                 for ((isTeamA, _) as groupAddress: bool * int, label, center, radius) in groups do
@@ -111,7 +111,7 @@ module private Setup =
                         // Group.offsetY -25
                         Group.children [|
                             circle [
-                                Circle.radius (r.scaleX 3.<yards>)
+                                Circle.radius (r.scaleX radius)
                                 Circle.fill (if isTeamA then Color.Blue else Color.Purple)
                                 Circle.key "outline"
                                 ]

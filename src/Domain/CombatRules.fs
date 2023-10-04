@@ -229,6 +229,14 @@ let fight (cqrs: CQRS.CQRS<_,Combat>) =
             loop (counter + 1)
     loop 1
 
+let radius_ (group:GroupSetup) =
+    match group.radius with
+    | Some r -> r
+    | None ->
+        // we want it full but not THAT full
+        let memberCount = group.members |> List.sumBy fst
+        1.0<yards> * (sqrt (float memberCount))
+
 let toCombatants (db: Map<string, Creature>) team positioner =
     // we want numbers to ascend smoothly on a side, so that we can use numbers to prioritize targets in the same order they were in fightsetup
     let mutable counter = 0
@@ -236,14 +244,7 @@ let toCombatants (db: Map<string, Creature>) team positioner =
         [   for quantity, name in group.members do
                 for i in 1..quantity do
                     let stats = db[name]
-                    let radius =
-                        match group.radius with
-                        | Some r -> r
-                        | None ->
-                            // we want it full but not THAT full
-                            let memberCount = group.members |> List.sumBy fst
-                            1.5<yards> * sqrt (float memberCount)
-                    Combatant.fresh(team, (if quantity > 1 then $"{name} {i}" else name), counter + i, positioner (group.center, radius, stats), stats)
+                    Combatant.fresh(team, (if quantity > 1 then $"{name} {i}" else name), counter + i, positioner (group.center, radius_ group, stats), stats)
                 counter <- counter + quantity
             ]
 
@@ -282,8 +283,8 @@ module Team =
     let randomInitialPosition members : _ GroupSetup =
         let yards n = float n * 1.<yards>
         {   members = members
-            // we'll use the middle 20 x 20 as the default center instead of the whole 40 x 40 area
-            center = (10 + random.Next 19 |> yards, 10 + random.Next 19 |> yards)
+            // we'll use the middle 30 x 30 as the default center instead of the whole 40 x 40 area
+            center = (5 + random.Next 29 |> yards, 5 + random.Next 29 |> yards)
             radius = None
             }
 
