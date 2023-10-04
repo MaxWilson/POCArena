@@ -21,6 +21,9 @@ type ICircleProperty =
 type IRectProperty =
     interface end
 [<Erase>]
+type ILineProperty =
+    interface end
+[<Erase>]
 type ITextProperty =
     interface end
 [<Erase>]
@@ -31,6 +34,7 @@ type IShapeProperty =
         inherit IGroupProperty
         inherit ICircleProperty
         inherit IRectProperty
+        inherit ILineProperty
         inherit ITextProperty
         end
 
@@ -61,6 +65,7 @@ module private Interop =
     let inline mkGroupAttr (key: string) (value: obj) : IGroupProperty = unbox (key, value)
     let inline mkCircleAttr (key: string) (value: obj) : ICircleProperty = unbox (key, value)
     let inline mkRectAttr (key: string) (value: obj) : IRectProperty = unbox (key, value)
+    let inline mkLineAttr (key: string) (value: obj) : ILineProperty = unbox (key, value)
     let inline mkTextAttr (key: string) (value: obj) : ITextProperty = unbox (key, value)
 
     // In React interop scenarios, for stage/layer/group/etc., it's important to use arrays instead of lists so that React won't complain about not having a key
@@ -69,6 +74,7 @@ module private Interop =
     let inline group (props: IGroupProperty array) = Interop.reactApi.createElement(import "Group" "react-konva", createObj !!props)
     let inline circle (props: ICircleProperty array) = Interop.reactApi.createElement(import "Circle" "react-konva", createObj !!props)
     let inline rect (props: IRectProperty array) = Interop.reactApi.createElement(import "Rect" "react-konva", createObj !!props)
+    let inline line (props: ILineProperty array) = Interop.reactApi.createElement(import "Line" "react-konva", createObj !!props)
     let inline text (props: ITextProperty array) = Interop.reactApi.createElement(import "Text" "react-konva", createObj !!props)
 
 [<Erase>]
@@ -119,6 +125,11 @@ type Rect =
     static member inline strokeWidth (pixels:int) = mkRectAttr "strokeWidth" pixels
     static member inline stroke (color:Color) = mkRectAttr "stroke" color
     static member inline create props = rect (props |> Array.ofList)
+
+type Line =
+    inherit Shape
+    static member inline points (points: float array) = mkLineAttr "points" points
+    static member inline create props = line (props |> Array.ofList)
 
 [<Erase>]
 type VerticalAlign = Top | Middle | Bottom

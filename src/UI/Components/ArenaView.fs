@@ -25,6 +25,12 @@ module private Impl =
                 Rect.key name
                 ]
                 @props)
+        member this.line name (points: (float<yards> * float<yards>) list) props =
+            Line.create ([
+                Line.key name
+                Line.points (points |> List.collect (fun (x,y) -> [ this.scaleX x; this.scaleY y ]) |> Array.ofList)
+                ]
+                @props)
         member _.circle name (x:float<yards>,y:float<yards>) props =
             Circle.create ([
                 Circle.x (x * _scaleX)
@@ -67,15 +73,18 @@ module private Impl =
             ]
     let layoutGrid (r: RenderHelper) =
         Layer.createNamed "Grid" [
-            for x in [0..39] |> List.map toYard do
-                for y in [0..39] |> List.map toYard do
-                    r.rect $"Rect{x}_{y}" (x, y) [
-                        Rect.stroke Color.Black
-                        Rect.strokeWidth 1
-                        Rect.opacity 0.1
-                        Rect.width (r.scaleX 1.<yards>)
-                        Rect.height (r.scaleY 1.<yards>)
-                        ]
+            for i in [0..40] do
+                let x = i |> toYard
+                r.line $"Line_vertical{x}" [x,0.<yards>; x, 40.<yards>] [
+                    Line.stroke Color.Black
+                    Line.strokeWidth 1
+                    Line.opacity (if i % 5 = 0 then 0.3 else 0.1)
+                    ]
+                r.line $"Line_horizontal{x}" [0.<yards>, x; 40.<yards>, x] [
+                    Line.stroke Color.Black
+                    Line.strokeWidth 1
+                    Line.opacity (if i % 5 = 0 then 0.3 else 0.1)
+                    ]
             ]
 
 module private Setup =
