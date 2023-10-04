@@ -237,15 +237,19 @@ let radius_ (group:GroupSetup) =
         let memberCount = group.members |> List.sumBy fst
         1.0<yards> * (sqrt (float memberCount))
 
-let toCombatants (db: Map<string, Creature>) team positioner =
+let toCombatants (db: Map<string, Creature>) teamNumber positioner =
     // we want numbers to ascend smoothly on a side, so that we can use numbers to prioritize targets in the same order they were in fightsetup
     let mutable counter = 0
-    fun (group: GroupSetup) ->
-        [   for quantity, name in group.members do
-                for i in 1..quantity do
-                    let stats = db[name]
-                    Combatant.fresh(team, (if quantity > 1 then $"{name} {i}" else name), counter + i, positioner (group.center, radius_ group, stats), stats)
-                counter <- counter + quantity
+    let mutable perMonsterCounter = Map.empty
+    fun (team: TeamSetup) ->
+        [   for group in team do
+                for quantity, name in group.members do
+                    for i in 1..quantity do
+                        let stats = db[name]
+                        let prev = defaultArg (perMonsterCounter.TryFind name) 0 // if there are multiple groups of e.g. 1 orc and 1 orc, the second group should start at Orc 2 not "Orc"
+                        Combatant.fresh(teamNumber, (if prev + quantity > 1 then $"{name} {prev + i}" else name), counter + i, positioner (group.center, radius_ group, stats), stats)
+                    counter <- counter + quantity
+                    perMonsterCounter <- perMonsterCounter |> Map.add name (defaultArg (perMonsterCounter.TryFind name) 0 + quantity)
             ]
 
 let makeGroupPositioner ()  = // a groupPositioner is stateful so it can keep track of which spaces are still empty
@@ -270,7 +274,7 @@ let makeGroupPositioner ()  = // a groupPositioner is stateful so it can keep tr
 let createCombat (db: Map<string, Creature>) (team1: TeamSetup) team2 =
     let positioner = makeGroupPositioner() // stateful!
     { combatants =
-        (team1 |> List.collect (toCombatants db 1 positioner)) @ (team2 |> List.collect (toCombatants db 2 positioner))
+        (team1 |> (toCombatants db 1 positioner)) @ (team2 |> (toCombatants db 2 positioner))
         |> Seq.map(fun c -> c.Id, c)
         |> Map.ofSeq
         }
@@ -349,7 +353,6 @@ let calibrate db (team1: TeamSetup) (center: Coords, radius: Distance, enemyType
     | [] ->
         return None, None, None
     | inbounds ->
-        breakHere()
         let min, _ = inbounds |> List.minBy fst
         let max, (_, sampleFight) = inbounds |> List.maxBy fst
         return Some min, Some max, Some sampleFight
