@@ -72,7 +72,7 @@ module private Impl =
                     r.rect $"Rect{x}_{y}" (x, y) [
                         Rect.stroke Color.Black
                         Rect.strokeWidth 1
-                        Rect.opacity 0.3
+                        Rect.opacity 0.1
                         Rect.width (r.scaleX 1.<yards>)
                         Rect.height (r.scaleY 1.<yards>)
                         ]
